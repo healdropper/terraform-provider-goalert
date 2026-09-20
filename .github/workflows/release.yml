@@ -1,0 +1,71 @@
+name: Release
+on:
+  push:
+    tags: ["v0.0.*"]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require a reviewed main-branch commit and an exact patch tag
+        shell: bash
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v0\.0\.[0-9]+$ ]]
+          git merge-base --is-ancestor HEAD origin/main
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+      - run: make check-format test vet build acceptance
+  package:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Require the release signing identity
+        env:
+          SIGNING_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          SIGNING_FINGERPRINT: ${{ vars.GPG_FINGERPRINT }}
+        run: |
+          test -n "$SIGNING_KEY"
+          test -n "$SIGNING_FINGERPRINT"
+      - name: Import release signing key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Verify the expected public fingerprint
+        env:
+          ACTUAL: ${{ steps.gpg.outputs.fingerprint }}
+          EXPECTED: ${{ vars.GPG_FINGERPRINT }}
+        run: test "$ACTUAL" = "$EXPECTED"
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          version: v2.18.2
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ steps.gpg.outputs.fingerprint }}
+      - name: Verify the generated detached signature
+        env:
+          GPG_FINGERPRINT: ${{ steps.gpg.outputs.fingerprint }}
+        run: |
+          gpg --batch --verify dist/*_SHA256SUMS.sig dist/*_SHA256SUMS
