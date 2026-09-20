@@ -12,7 +12,7 @@ poc:
 	$(PYTHON) scripts/fixture.py
 build:
 	$(GO) build -o bin/ ./...
-test:
+test: test-harness
 	$(GO) test -timeout=120s ./...
 acceptance:
 	$(PYTHON) scripts/acceptance.py
@@ -32,3 +32,7 @@ release-snapshot:
 	$(GORELEASER) release --snapshot --clean --skip=publish,sign
 release-smoke:
 	$(PYTHON) scripts/release_smoke.py --goreleaser "$(GORELEASER)"
+
+.PHONY: test-harness
+test-harness:
+	$(PYTHON) -m unittest discover -s scripts -p "test_*.py" -v
