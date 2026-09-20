@@ -24,6 +24,24 @@ def run(args, *, env=None, cwd=ROOT, accepted=(0,)):
         raise RuntimeError(f"{Path(args[0]).name} failed (exit {result.returncode}): {result.stderr[-2500:]}")
     return result
 
+def wait_for_health(url, timeout=120):
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError(f"GoAlert did not become healthy within {timeout} seconds")
+        try:
+            with urllib.request.urlopen(url + "/health", timeout=min(3, remaining)) as response:
+                if response.status == 200:
+                    return
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException):
+            # Docker can publish the port before GoAlert accepts requests.
+            pass
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError(f"GoAlert did not become healthy within {timeout} seconds")
+        time.sleep(min(1, remaining))
+
 class Fixture:
     def __init__(self):
         self.project = "goalert-provider-" + uuid.uuid4().hex[:12]
@@ -39,16 +57,7 @@ class Fixture:
 
     def start(self):
         self.compose("up", "-d", "--wait", "--wait-timeout", "120")
-        deadline = time.monotonic() + 120
-        while True:
-            try:
-                with urllib.request.urlopen(self.url + "/health", timeout=3) as response:
-                    if response.status == 200:
-                        break
-            except (urllib.error.URLError, TimeoutError, http.client.HTTPException):
-                if time.monotonic() >= deadline:
-                    raise RuntimeError("GoAlert did not become healthy within 120 seconds")
-                time.sleep(1)
+        wait_for_health(self.url)
         password = secrets.token_urlsafe(32)
         self.compose("exec", "-T", "goalert", "goalert", "add-user", "--admin",
                      "--user", "providerfixture", "--email", "fixture@example.invalid", "--pass", password)

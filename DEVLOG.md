@@ -29,3 +29,13 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - GoReleaser configuration and six-platform snapshot build passed. Native Windows
   Git-bundled GPG could not connect to its agent; the ephemeral-signature smoke
   test runs on Linux CI. A real release signer remains unconfigured.
+
+## CI portability and signing follow-up
+
+- Linux CI exposed a connection reset while the disposable container was starting.
+  Readiness now retries transient connection failures within the existing deadline,
+  including non-ready HTTP statuses; dedicated harness regression tests cover it.
+- Corrected GoReleaser Action installation mode so later steps can find the binary.
+- Linux packaging CI passed: six archives, Registry manifest, SHA256 checksums and
+  a detached GPG signature verified with an ephemeral test key. This validates the
+  signing process but does not establish or publish a production signing identity.
