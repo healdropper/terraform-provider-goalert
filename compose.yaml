@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:f02121de6f74d30d8a94cd1d9584125e2178d7e6c377d8130112d4e52d867995
+    environment:
+      POSTGRES_USER: goalert
+      POSTGRES_DB: goalert
+      POSTGRES_PASSWORD: ${FIXTURE_DB_PASSWORD:?}
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goalert"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+  goalert:
+    image: goalert/goalert:v0.34.1@sha256:c3ebee8abdf6035cbf7ea2aa855807ce484d44e5125d413cde1f9811039ddb75
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GOALERT_DB_URL: postgres://goalert:${FIXTURE_DB_PASSWORD}@postgres/goalert?sslmode=disable
+      GOALERT_DATA_ENCRYPTION_KEY: ${FIXTURE_ENCRYPTION_KEY:?}
+      GOALERT_PUBLIC_URL: http://127.0.0.1:${FIXTURE_PORT:-18081}
+    ports:
+      - "127.0.0.1:${FIXTURE_PORT:-18081}:8081"

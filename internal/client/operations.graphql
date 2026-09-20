@@ -1,0 +1,14 @@
+query ProviderReadService($id: ID!) {
+  service(id: $id) { id name description escalationPolicy { id } }
+}
+mutation ProviderCreateService($name: String!, $description: String!, $escalationPolicyID: ID!) {
+  createService(input: {name: $name, description: $description, escalationPolicyID: $escalationPolicyID}) {
+    id name description escalationPolicy { id }
+  }
+}
+mutation ProviderUpdateService($id: ID!, $name: String!, $description: String!, $escalationPolicyID: ID!) {
+  updateService(input: {id: $id, name: $name, description: $description, escalationPolicyID: $escalationPolicyID})
+}
+mutation ProviderDeleteService($id: ID!) {
+  deleteAll(input: [{type: service, id: $id}])
+}
