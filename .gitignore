@@ -1,0 +1,13 @@
+.local/
+bin/
+dist/
+.terraform/
+*.tfstate*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+.env
+*.pem
+*.key
+coverage.out
+__pycache__/
