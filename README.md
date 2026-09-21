@@ -87,3 +87,11 @@ Source files and the canonical document are hand-maintained. Do not edit
 addresses, Kubernetes assumptions or deployment credentials.
 
 License: [MPL-2.0](LICENSE).
+
+## Specifications and delivery
+
+[Vision](docs/specs/00_VISION.md), [architecture](docs/specs/01_ARCHITECTURE_ADR.md)
+and [service contract](docs/specs/goalert-service.md) distinguish accepted task
+scope from observed implementation. See the [baseline](docs/sprints/sprint-0-baseline.md),
+[roadmap](docs/roadmap.md) and [proposed Sprint 1](docs/sprints/sprint-1.md).
+The [pinned lifecycle](docs/specs/spec-driven-lifecycle.md) governs future work.

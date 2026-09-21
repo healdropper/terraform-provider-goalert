@@ -10,3 +10,12 @@ Update the canonical document, key migration guidance and tests together.
 Never commit API tokens, test state, private signing keys or development overrides.
 Keep visibility changes, Registry publication and production consumer adoption as
 three separately authorized decisions. Preparing a PR does not authorize merging.
+
+## SpecDD adoption
+
+Follow the pinned organization-neutral standard in
+[docs/specs/spec-driven-lifecycle.md](docs/specs/spec-driven-lifecycle.md).
+Read the applicable specs, roadmap and sprint before work. Preserve this task's
+existing branch/PR under the transition rules. New behavior requires accepted
+specification and sprint scope, a linked issue, and recorded red-first TDD.
+Do not infer completed baseline review or production release from passing CI.
