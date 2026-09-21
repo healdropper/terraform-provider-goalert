@@ -57,3 +57,18 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   Process gaps and verification limits are recorded in the baseline and roadmap.
 - Doctrine assessment: no upstream rule change needed; this is repository adoption.
 - Documentation verification: 62 local links resolved and `git diff --check` passed.
+
+## 2026-09-21 - Expose workflow_dispatch in release automation
+
+- Goal: adopt the Foundry v1.8.0 release governance contingency rule in
+  the release workflow, tracked under milestone v0.0.2 and Project 1.
+- Updated `.github/workflows/release.yml` to include `workflow_dispatch:`
+  alongside the existing `push: tags: ["v0.0.*"]` trigger.
+- Preserved the existing ref name check and ancestor validation step so manual
+  runs still require an exact patch tag ancestor of `origin/main`.
+- Delivery tracking: linked to [issue #12](https://github.com/healdropper/terraform-provider-goalert/issues/12),
+  assigned to milestone [v0.0.2](https://github.com/healdropper/terraform-provider-goalert/milestone/2),
+  and tracked on [Project 1](https://github.com/users/healdropper/projects/1).
+- Doctrine assessment: follows the release automation contingency rule from
+  Foundry v1.8.0 / Nighthaven Doctrine v2.7.0; no downstream repository policy change needed.
+- Verification: `git diff --check`, `make check-format`, `go vet ./...` and `go test ./...` passed.
