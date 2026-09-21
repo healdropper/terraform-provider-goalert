@@ -1,52 +1,57 @@
-# Sprint 1 proposal: policy-driven service configuration
+# Sprint 1: plan and prove a small routing increment
 
-Status: Proposed, not an active accepted delivery sprint.
-Owner: healdropper.
-Candidate increment: v0.0.2, not a published/selected production version.
-Source: [roadmap Backlog](../roadmap.md);
-entry gate: [baseline review](sprint-0-baseline.md).
-No feature issue is accepted yet. [Issue #2](https://github.com/healdropper/terraform-provider-goalert/issues/2)
-tracks adoption only.
+Owner: healdropper. Updated: 2026-09-21.
+Status: small-increment planning direction accepted; discovery execution and
+normal feature implementation have not started in this planning task.
+Detailed resource contract and implementation handoff remain pending.
+[Milestone v0.0.2](../milestones/v0.0.2.md) is the scope/criteria authority;
+[private board](https://github.com/users/healdropper/projects/1) tracks delivery.
 
-## Proposed goal and story
+## Goal and user story
 
-As a GoAlert operator, declare an escalation policy and connect a managed service
-to it without putting installation-specific assumptions into the provider.
+As a GoAlert operator, prepare a proven contract for declaring a policy with
+ordered steps and a webhook destination, connected to an existing service.
+The first later end-to-end scenario is a Grafana firing alert to a Telegram
+group. This small routing increment does not include the entire delivery chain.
 
-Proposed scope: investigate policy and step APIs, then agree the minimal typed
-resource contract and key-document migration. Preserve SVC-01 through SVC-08 in
-[the service spec](../specs/goalert-service.md).
-Explicit exclusions: real recipients, production apply, public visibility,
-Registry publication, schedules and integration-key resources.
+## Scope and sequence
 
-## Decisions needed before dependent implementation
+1. Review/schedule remaining adoption prerequisites (V002-FOUNDATION).
+2. Execute the scoped disposable policy/webhook discovery (V002-DISC) after its
+   execution handoff; report actual evidence and limitations.
+3. Resolve and accept the canonical resource delta (V002-SPEC).
+4. Only then hand the issue to spec-driven-development (V002-IMPL), with
+   V002-VERIFY tests and evidence accompanying implementation.
 
-- Whether policy steps are nested or separately managed; ordering and ownership.
-- Minimum useful target/action support and handling of empty policies.
-- Referenced-policy deletion and safe dependency behavior.
-- Exact acceptance identifiers in a proposed policy specification after the PoC.
-- Sprint selection, actionable feature issue, capacity and DoD acceptance.
+The current task only creates planning artifacts and GitHub tracking. No normal
+implementation is Ready while step ownership and API behavior remain unresolved.
+Issue references are maintained in the milestone's delivery table rather than
+copied as a second source of acceptance criteria.
 
-## Proposed capacity and defect buffer
+## Exclusions
 
-One policy capability at a time; reserve 20% of the agreed effort for confirmed
-defects. This is a planning proposal, not an accepted time estimate or deadline.
-No ongoing accepted delivery item is displaced by writing this proposal.
+No Grafana integration-key resource, real Telegram transport, bot/group creation,
+production Grafana rule, outage experiment, schedules or rotations. Public
+visibility, Registry publication and production adoption remain separate gates.
+The [availability RFC](../specs/grafana-availability.md) is Backlog.
 
-## Proposed DoD
+## Capacity and defect buffer
 
-Accepted policy spec committed before implementation; linked issue with its
-criteria; real failing behavior tests before the implementation change; relevant
-Make verification; service regression and disposable policy/service acceptance;
-import, drift and no-change plans; documented key migration; reviewed PR.
-Merge, issue/board closure, release and deployment are recorded separately.
-No implementation, TDD result, sprint acceptance or completion is asserted here.
+One routing capability at a time; no deadline or effort estimate has been
+accepted. The previous 20% defect-buffer suggestion remains proposed. No active
+implementation is displaced; planning refines the earlier unaccepted proposal.
+Owner acceptance of the detailed scope, DoD and capacity remains an entry gate
+before routine feature delivery.
 
-## 2026-09-21: new discovery input, no sprint activation
+## DoD and evidence
 
-The owner requested analysis of source-to-chat delivery before choosing work.
-See [the proposed contract](../specs/alert-delivery.md) and
-[milestone options](../milestones/alert-delivery.md). This earlier policy-first
-proposal remains one option; it is not an accepted choice over ingress-first or
-an end-to-end slice. No capacity, displacement, feature issue or implementation
-has been committed by the new research.
+Reference V002-DISC/SPEC/IMPL/VERIFY/FOUNDATION in the milestone. Accepted specs
+must precede implementation commits, followed by red-first TDD, relevant Make
+checks and real disposable acceptance. Verify import, drift, auth-error state
+preservation and a second plan without changes. Review merge, issue closure,
+Project status, release and production adoption separately.
+
+No PoC, resource implementation, red-first result, delivery acceptance or release
+has been completed by this sprint document. The dated baseline remains unchanged.
+The 2026-09-21 brainstorm and its alternatives remain in
+[the earlier proposal](../milestones/alert-delivery.md).

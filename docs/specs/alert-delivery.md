@@ -1,11 +1,24 @@
 # RFC: declarative alert delivery to a chat destination
 
-Status: Proposed. No resource schema, sprint or implementation is accepted here.
+Status: Proposed technical contract; accepted product direction is recorded below.
+No resource schema or implementation is accepted here.
 Owner and decision maker: healdropper. Research date: 2026-09-21.
 Track: C (new capability), not a defect against the service milestone.
 Related: [research](../research/alert-delivery-feasibility.md),
 [milestone options](../milestones/alert-delivery.md), [roadmap](../roadmap.md).
 The request authorizes analysis and documentation only.
+
+## Owner direction recorded on 2026-09-21
+
+The owner selected Grafana firing as the first end-to-end scenario and prefers
+small provider increments. A Telegram group is preferred for adding people; a
+private group is possible, but no bot or group has been selected or provisioned.
+Grafana outage detection is a later [availability proposal](grafana-availability.md).
+
+The [v0.0.2 planning record](../milestones/v0.0.2.md) and
+[Sprint 1](../sprints/sprint-1.md) hold the next increment's boundaries. Detailed
+resource behavior, recovery notifications and acknowledgement remain unresolved.
+These product decisions do not retroactively accept the full proposed table below.
 
 ## Product outcome and scope
 
