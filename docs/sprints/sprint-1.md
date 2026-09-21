@@ -41,3 +41,12 @@ Make verification; service regression and disposable policy/service acceptance;
 import, drift and no-change plans; documented key migration; reviewed PR.
 Merge, issue/board closure, release and deployment are recorded separately.
 No implementation, TDD result, sprint acceptance or completion is asserted here.
+
+## 2026-09-21: new discovery input, no sprint activation
+
+The owner requested analysis of source-to-chat delivery before choosing work.
+See [the proposed contract](../specs/alert-delivery.md) and
+[milestone options](../milestones/alert-delivery.md). This earlier policy-first
+proposal remains one option; it is not an accepted choice over ingress-first or
+an end-to-end slice. No capacity, displacement, feature issue or implementation
+has been committed by the new research.

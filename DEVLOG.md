@@ -58,6 +58,24 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Doctrine assessment: no upstream rule change needed; this is repository adoption.
 - Documentation verification: 62 local links resolved and `git diff --check` passed.
 
+## 2026-09-21 - Alert delivery product discovery
+
+- Goal: analyze source-to-chat value and propose milestones before owner selection.
+- Read pinned GoAlert v0.34.1 source and official Grafana/Telegram documentation.
+  [Source evidence and limitations](docs/research/alert-delivery-feasibility.md)
+  are authoritative there; no new API or message-delivery PoC was run.
+- Added the [proposed contract](docs/specs/alert-delivery.md) and
+  [milestone options](docs/milestones/alert-delivery.md). Updated the
+  [roadmap](docs/roadmap.md) and linked the still-proposed
+  [Sprint 1](docs/sprints/sprint-1.md), without accepting new scope.
+- Recorded PR #1's actual merge in the roadmap; preserved the dated baseline.
+  No provider release, infrastructure change or Telegram message was performed.
+- Doctrine assessment: protocol constraints belong in this provider's research;
+  consumer-specific deployment and bot ownership remain in the consumer.
+- Verification: `make check-format` and `git diff --check` passed; 52 local
+  documentation links, balanced code fences, proposal labels and generic-scope
+  checks passed. Documentation-only work adds no behavioral test claims.
+
 ## 2026-09-21 - Expose workflow_dispatch in release automation
 
 - Goal: adopt the Foundry v1.8.0 release governance contingency rule in
