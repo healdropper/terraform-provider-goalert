@@ -39,3 +39,21 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Linux packaging CI passed: six archives, Registry manifest, SHA256 checksums and
   a detached GPG signature verified with an ephemeral test key. This validates the
   signing process but does not establish or publish a production signing identity.
+
+## 2026-09-21 - SpecDD transition
+
+- Reread installed and repository instructions, verified remotes and pinned
+  Foundry v1.6.0; Nighthaven v2.6.0 applies to the consumer by ownership.
+- Recorded the [service contract](docs/specs/goalert-service.md) and
+  [dated baseline](docs/sprints/sprint-0-baseline.md), preserving existing docs
+  and historical verification without inventing prior TDD or acceptance.
+- Added the [roadmap](docs/roadmap.md) and [proposed sprint](docs/sprints/sprint-1.md);
+  their content is authoritative there rather than duplicated in this log.
+- Opened [audit issue #2](https://github.com/healdropper/terraform-provider-goalert/issues/2)
+  and its retrospective milestone; both await maintainer review.
+- Fresh `make test vet check-format` passed (Go client results were cached).
+  Historical real acceptance/signing CI was re-queried, not described as a fresh run.
+- No provider behavior, branch name, repository visibility or production state changed.
+  Process gaps and verification limits are recorded in the baseline and roadmap.
+- Doctrine assessment: no upstream rule change needed; this is repository adoption.
+- Documentation verification: 62 local links resolved and `git diff --check` passed.
