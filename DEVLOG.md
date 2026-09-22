@@ -145,3 +145,16 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Delivery tracking: resolves [issue #5](https://github.com/healdropper/terraform-provider-goalert/issues/5), unblocking V002-SPEC (issue #6).
 - Doctrine assessment: conforms to organization-neutral SpecDD lifecycle and Foundry governance.
 - Verification: live test script `scripts/test_feasibility.py` passed with 100% empirical assertions; `git diff --check`, `python scripts/check_format.py`, `go vet ./...`, and `go test ./...` passed.
+
+## 2026-09-22 - Resolve v0.0.2 policy resource contract
+
+- Goal: define canonical specification for `goalert_escalation_policy` resource under V002-SPEC.
+- Created canonical specification `docs/specs/goalert-escalation-policy.md`:
+  - Resolved `goalert_escalation_policy` resource schema: `id`, `name`, `description`, `repeat`, and nested `step` blocks.
+  - Specified `delay_minutes` (>= 1), `step_number` (0-indexed, computed), and `webhook_action` with required `url`.
+  - Specified step ownership and reconciliation lifecycle: atomic creation via `createEscalationPolicy`, step modification via `updateEscalationPolicyStep`, new step addition via `createEscalationPolicyStep`, and reordering/pruning via `updateEscalationPolicy(stepIDs: [...])`.
+  - Documented deletion cascade via `deleteAll`, referential integrity enforcement when referenced by a service, and key migration requirements for GraphQL AST hash validation.
+- Updated `docs/milestones/v0.0.2.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
+- Delivery tracking: resolves [issue #6](https://github.com/healdropper/terraform-provider-goalert/issues/6), unblocking V002-IMPL (issue #7) and V002-VERIFY (issue #8).
+- Doctrine assessment: conforms to organization-neutral SpecDD lifecycle and Foundry governance.
+- Verification: `git diff --check`, `python scripts/check_format.py`, `go vet ./...`, and `go test ./...` passed.
