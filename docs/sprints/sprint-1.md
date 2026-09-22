@@ -24,10 +24,9 @@ group. This small routing increment does not include the entire delivery chain.
    referential integrity, and multi-operation API key compatibility.
 3. Resolve and accept the canonical resource delta (V002-SPEC) — Completed:
    canonical specification resolved in docs/specs/goalert-escalation-policy.md.
-4. Hand the issue to spec-driven-development (V002-IMPL) and verification (V002-VERIFY) — Ready.
+4. Hand the issue to spec-driven-development (V002-IMPL) and verification (V002-VERIFY) — Completed:
+   `goalert_escalation_policy` resource implemented via Terraform Plugin Framework, client updated with full GraphQL CRUD and error handling, unit tests and end-to-end acceptance tests passed cleanly against real GoAlert v0.34.1 container.
 
-The current task only creates planning artifacts and GitHub tracking. No normal
-implementation is Ready while step ownership and API behavior remain unresolved.
 Issue references are maintained in the milestone's delivery table rather than
 copied as a second source of acceptance criteria.
 
