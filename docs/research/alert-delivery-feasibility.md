@@ -91,10 +91,31 @@ or a promise that identifiers, import commands or provider errors are hidden.
 Proposed acceptance must include synthetic-secret leak checks, replacement
 ordering, explicit revocation and sanitized troubleshooting.
 
-## Runtime evidence still needed
+## Runtime feasibility probe outcomes (2026-09-22)
 
-Policy action creation through the canonical key; alert/closed/bundle event
-delivery; maximum-field and ordering behavior; invalid-destination validation;
-referenced-policy deletion; key read-after-delete and import; the actual Grafana
-payload; adapter error cases; and a separately authorized real chat receipt.
-The existing service acceptance suite proves none of these new delivery paths.
+Evidence established against disposable GoAlert v0.34.1 + PostgreSQL 17 (`scripts/test_feasibility.py`):
+
+1. **Webhook Destination Enablement**:
+   - `builtin-webhook` is disabled by default in GoAlert v0.34.1 (`enabled: false`).
+   - Setting `Webhook.Enable` to `true` (via `setConfig` or environment variable `GOALERT_WEBHOOK_ENABLE=true`) enables it.
+   - Required destination argument is `webhook_url` (scheme `http://` or `https://` required; invalid scheme rejected with code `INVALID_DEST_FIELD_VALUE`).
+
+2. **Policy and Step Architecture**:
+   - Atomic creation: `createEscalationPolicy` accepts inline `steps: [CreateEscalationPolicyStepInput!]`, creating the policy and all steps atomically.
+   - Reading: `escalationPolicy(id: $id)` returns `id, name, description, repeat, steps { id stepNumber delayMinutes actions { type args } }`.
+   - Updating & Step Ownership: `updateEscalationPolicy` accepts `stepIDs: [ID!]`. Steps omitted from `stepIDs` are deleted automatically by GoAlert; remaining steps are reordered to match the list index.
+   - Step modification: `updateEscalationPolicyStep` updates an existing step's `delayMinutes` and `actions`.
+   - Step addition: `createEscalationPolicyStep` appends a new step to an existing policy.
+   - Policy deletion: `deleteAll(input: [{type: escalationPolicy, id: $id}])` cascades to all steps.
+   - Referential integrity: If a service is attached to the escalation policy, deletion is blocked with field error `is currently in use`.
+
+3. **Validation Limits**:
+   - `delayMinutes`: Minimum value is 1 (value 0 rejected with code `INVALID_INPUT_VALUE`: `"must not be below 1"`).
+   - `repeat`: Must not be negative (value -1 rejected with field error `"must not be negative"`).
+   - `name`: Required string, must not be empty.
+
+4. **API Key Fixed-Document Constraints**:
+   - Expanded canonical multi-operation document retains backwards compatibility for existing `ProviderCreateService`, `ProviderReadService`, `ProviderUpdateService`, and `ProviderDeleteService` operations.
+   - Executing named operations with `query: ""` works seamlessly across services and escalation policies.
+   - Revoked keys or invalid query hashes are rejected as expected.
+   - User-role API keys can manage services and escalation policies when the operations are present in their key document.
