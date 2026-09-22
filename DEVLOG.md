@@ -58,6 +58,50 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Doctrine assessment: no upstream rule change needed; this is repository adoption.
 - Documentation verification: 62 local links resolved and `git diff --check` passed.
 
+## 2026-09-21 - Alert delivery product discovery
+
+- Goal: analyze source-to-chat value and propose milestones before owner selection.
+- Read pinned GoAlert v0.34.1 source and official Grafana/Telegram documentation.
+  [Source evidence and limitations](docs/research/alert-delivery-feasibility.md)
+  are authoritative there; no new API or message-delivery PoC was run.
+- Added the [proposed contract](docs/specs/alert-delivery.md) and
+  [milestone options](docs/milestones/alert-delivery.md). Updated the
+  [roadmap](docs/roadmap.md) and linked the still-proposed
+  [Sprint 1](docs/sprints/sprint-1.md), without accepting new scope.
+- Recorded PR #1's actual merge in the roadmap; preserved the dated baseline.
+  No provider release, infrastructure change or Telegram message was performed.
+- Doctrine assessment: protocol constraints belong in this provider's research;
+  consumer-specific deployment and bot ownership remain in the consumer.
+- Verification: `make check-format` and `git diff --check` passed; 52 local
+  documentation links, balanced code fences, proposal labels and generic-scope
+  checks passed. Documentation-only work adds no behavioral test claims.
+
+## 2026-09-21 - Select small-increment planning and create delivery tracking
+
+- Recorded the owner's first Grafana firing scenario, group preference and
+  interest in later independent availability detection in the
+  [capability proposal](docs/specs/alert-delivery.md). No group or bot was created.
+- Created [v0.0.2 planning](docs/milestones/v0.0.2.md), linked issues #4-#8 and
+  updated [Sprint 1](docs/sprints/sprint-1.md). Detailed behavior and normal
+  implementation remain pending discovery and owner acceptance.
+- Created a [private Project](https://github.com/users/healdropper/projects/1),
+  verified private visibility before attaching repository data, configured Board
+  layout with Status columns and verified all ten intended items.
+- Tracked ingress, independent availability and Telegram delivery as later
+  Backlog issues #9-#11 without assigning them to v0.0.2.
+- Added bug/enhancement intake templates; full delivery readiness remains in
+  issue #4. Closure workflows report enabled, but no issue was artificially
+  closed or marked Done to manufacture completion evidence.
+- The initial ambiguous Project creation command was rejected by automatic
+  review. A safe empty-container creation followed by explicit private readback
+  succeeded before adding any repository link or planning content.
+- Doctrine assessment: this applies the pinned lifecycle; no upstream policy
+  change is needed. No PoC, feature implementation, merge, release or deployment.
+- Verification: `make check-format` and `git diff --check` passed; 81 local
+  links, code fences and both intake templates passed structural checks. GitHub
+  readback confirmed five open milestone issues, three later backlog issues,
+  Status-grouped boards and private visibility. No issues were closed.
+
 ## 2026-09-21 - Expose workflow_dispatch in release automation
 
 - Goal: adopt the Foundry v1.8.0 release governance contingency rule in
