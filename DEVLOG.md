@@ -116,3 +116,17 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Doctrine assessment: follows the release automation contingency rule from
   Foundry v1.8.0 / Nighthaven Doctrine v2.7.0; no downstream repository policy change needed.
 - Verification: `git diff --check`, `make check-format`, `go vet ./...` and `go test ./...` passed.
+
+## 2026-09-22 - Complete SpecDD delivery prerequisites
+
+- Goal: reconcile remaining delivery prerequisites for milestone v0.0.2 under V002-FOUNDATION.
+- Verified governance, issue templates (`bug_report.md`, `enhancement.md`), and Project 1
+  private boards and status column automations.
+- Reconciled release-management: confirmed workflow_dispatch deployment (PR #13 / issue #12);
+  explicitly recorded that maintained signing identity remains scheduled before public release.
+- Maintained linkage to audit issue #2 while keeping the baseline milestone open pending review.
+- Updated `docs/milestones/v0.0.2.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
+- Delivery tracking: resolves [issue #4](https://github.com/healdropper/terraform-provider-goalert/issues/4),
+  unblocking V002-DISC (issue #5).
+- Doctrine assessment: follows organization-neutral SpecDD lifecycle and Foundry governance.
+- Verification: `git diff --check`, `python scripts/check_format.py`, `go vet ./...` and `go test ./...` passed.

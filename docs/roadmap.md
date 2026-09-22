@@ -21,7 +21,7 @@ tracks transition review; keep its baseline milestone open until reviewed.
 | Item | Track / state | Owner | Scheduling / dependency |
 | --- | --- | --- | --- |
 | Review observed contracts and adoption gaps | Process transition, in review | healdropper | Baseline before normal feature delivery |
-| Remaining governance and delivery prerequisites | Technical adoption gap | healdropper | Private board created; templates in review; [v0.0.2](milestones/v0.0.2.md) tracks remaining work |
+| Remaining governance and delivery prerequisites | Technical adoption gap, Complete | healdropper | Resolved in issue #4; Project 1 automation and templates active; [v0.0.2](milestones/v0.0.2.md) |
 | Reconcile Release Please with GoReleaser and choose signing identity | Technical adoption gap, Proposed | healdropper | Preserve existing signing contract; before real release |
 | Alert delivery discovery and policy/step ownership | C, Proposed | healdropper | D0/M1 in [milestone options](milestones/alert-delivery.md); [small-increment planning record](milestones/v0.0.2.md) |
 | Incoming integration-key lifecycle and secret/state semantics | C, Proposed | healdropper | M2 in [milestone options](milestones/alert-delivery.md); order awaits owner decision |
