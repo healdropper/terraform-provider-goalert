@@ -67,6 +67,7 @@ class Fixture:
         with self.opener.open(request, timeout=15) as response:
             if "login_error" in response.url:
                 raise RuntimeError("Disposable admin login failed")
+        self.graphql("mutation { setConfig(input: [{id: \"Webhook.Enable\", value: \"true\"}]) }", session=True)
         self.token = self.key("admin")
         print("Disposable GoAlert v0.34.1 + PostgreSQL ready; canonical API key created.", flush=True)
         return self

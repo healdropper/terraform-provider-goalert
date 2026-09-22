@@ -23,6 +23,7 @@ import (
 var Document string
 
 var ErrNotFound = errors.New("service does not exist")
+var ErrInUse = errors.New("resource is currently in use")
 
 type Client struct {
 	endpoint string
@@ -37,6 +38,58 @@ type Service struct {
 	EscalationPolicy *struct {
 		ID string `json:"id"`
 	} `json:"escalationPolicy"`
+}
+
+type EscalationPolicy struct {
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Repeat      int64                  `json:"repeat"`
+	Steps       []EscalationPolicyStep `json:"steps"`
+}
+
+type EscalationPolicyStep struct {
+	ID           string        `json:"id"`
+	StepNumber   int64         `json:"stepNumber"`
+	DelayMinutes int64         `json:"delayMinutes"`
+	Actions      []Destination `json:"actions"`
+}
+
+type Destination struct {
+	Type string            `json:"type"`
+	Args map[string]string `json:"args"`
+}
+
+type CreateEscalationPolicyInput struct {
+	Name        string                            `json:"name"`
+	Description *string                           `json:"description,omitempty"`
+	Repeat      *int64                            `json:"repeat,omitempty"`
+	Steps       []CreateEscalationPolicyStepInput `json:"steps,omitempty"`
+}
+
+type CreateEscalationPolicyStepInput struct {
+	EscalationPolicyID *string            `json:"escalationPolicyID,omitempty"`
+	DelayMinutes       int64              `json:"delayMinutes"`
+	Actions            []DestinationInput `json:"actions,omitempty"`
+}
+
+type UpdateEscalationPolicyInput struct {
+	ID          string    `json:"id"`
+	Name        *string   `json:"name,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Repeat      *int64    `json:"repeat,omitempty"`
+	StepIDs     *[]string `json:"stepIDs,omitempty"`
+}
+
+type UpdateEscalationPolicyStepInput struct {
+	ID           string             `json:"id"`
+	DelayMinutes *int64             `json:"delayMinutes,omitempty"`
+	Actions      []DestinationInput `json:"actions,omitempty"`
+}
+
+type DestinationInput struct {
+	Type string            `json:"type"`
+	Args map[string]string `json:"args,omitempty"`
 }
 
 func New(endpoint, token string, allowHTTP bool) (*Client, error) {
@@ -85,7 +138,7 @@ func (c *Client) execute(ctx context.Context, operation string, variables any, t
 		return fmt.Errorf("%s: HTTP request failed; check connectivity, TLS and the 30-second timeout", operation)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusUnprocessableEntity {
 		return fmt.Errorf("%s: HTTP status %d; check endpoint and API key validity", operation, resp.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024+1))
@@ -106,11 +159,19 @@ func (c *Client) execute(ctx context.Context, operation string, variables any, t
 	}
 	if len(envelope.Errors) > 0 {
 		for _, e := range envelope.Errors {
-			if e.Extensions.Code == "invalid_query" {
-				return fmt.Errorf("%s: API key document mismatch; create a key with the canonical document shipped with this provider", operation)
+			if e.Extensions.Code == "invalid_query" ||
+				strings.Contains(e.Message, "wrong query for API key") ||
+				(strings.Contains(e.Message, "operation") && strings.Contains(e.Message, "not found")) {
+				return fmt.Errorf("%s: API key document mismatch; create a key with the canonical document shipped with this provider: %s", operation, e.Message)
+			}
+			if strings.Contains(e.Message, "currently in use") {
+				return fmt.Errorf("%s: %w: %s", operation, ErrInUse, e.Message)
 			}
 		}
 		return fmt.Errorf("%s: GraphQL rejected the operation; check the canonical document, admin role, key expiry and input values (server details suppressed)", operation)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s: HTTP status %d; check endpoint and API key validity", operation, resp.StatusCode)
 	}
 	if len(envelope.Data) == 0 || bytes.Equal(envelope.Data, []byte("null")) {
 		return fmt.Errorf("%s: missing GraphQL data", operation)
@@ -201,6 +262,117 @@ func (c *Client) DeleteService(ctx context.Context, id string) error {
 	}
 	if !result.Success {
 		return errors.New("delete service: API did not confirm success")
+	}
+	return nil
+}
+
+func escalationPolicyResult(raw json.RawMessage, allowMissing bool) (*EscalationPolicy, error) {
+	if bytes.Equal(raw, []byte("null")) && allowMissing {
+		return nil, ErrNotFound
+	}
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, errors.New("missing escalation policy result")
+	}
+	var ep EscalationPolicy
+	if err := json.Unmarshal(raw, &ep); err != nil {
+		return nil, errors.New("malformed escalation policy result")
+	}
+	if ep.ID == "" || ep.Name == "" {
+		return nil, errors.New("incomplete escalation policy result")
+	}
+	if ep.Steps == nil {
+		ep.Steps = []EscalationPolicyStep{}
+	}
+	for i := range ep.Steps {
+		if ep.Steps[i].Actions == nil {
+			ep.Steps[i].Actions = []Destination{}
+		}
+	}
+	return &ep, nil
+}
+
+func (c *Client) ReadEscalationPolicy(ctx context.Context, id string) (*EscalationPolicy, error) {
+	var result struct {
+		EscalationPolicy json.RawMessage `json:"escalationPolicy"`
+	}
+	if err := c.execute(ctx, "ProviderReadEscalationPolicy", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	ep, err := escalationPolicyResult(result.EscalationPolicy, true)
+	if err != nil {
+		return nil, fmt.Errorf("read escalation policy: %w", err)
+	}
+	if ep.ID != id {
+		return nil, errors.New("read escalation policy: response ID differs from requested ID")
+	}
+	return ep, nil
+}
+
+func (c *Client) CreateEscalationPolicy(ctx context.Context, input CreateEscalationPolicyInput) (*EscalationPolicy, error) {
+	var result struct {
+		EscalationPolicy json.RawMessage `json:"createEscalationPolicy"`
+	}
+	if err := c.execute(ctx, "ProviderCreateEscalationPolicy", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	ep, err := escalationPolicyResult(result.EscalationPolicy, false)
+	if err != nil {
+		return nil, fmt.Errorf("create escalation policy: %w", err)
+	}
+	return ep, nil
+}
+
+func (c *Client) UpdateEscalationPolicy(ctx context.Context, input UpdateEscalationPolicyInput) error {
+	var result struct {
+		Success bool `json:"updateEscalationPolicy"`
+	}
+	if err := c.execute(ctx, "ProviderUpdateEscalationPolicy", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("update escalation policy: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) DeleteEscalationPolicy(ctx context.Context, id string) error {
+	var result struct {
+		Success bool `json:"deleteAll"`
+	}
+	if err := c.execute(ctx, "ProviderDeleteEscalationPolicy", map[string]string{"id": id}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("delete escalation policy: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) CreateEscalationPolicyStep(ctx context.Context, input CreateEscalationPolicyStepInput) (*EscalationPolicyStep, error) {
+	var result struct {
+		Step *EscalationPolicyStep `json:"createEscalationPolicyStep"`
+	}
+	if err := c.execute(ctx, "ProviderCreateEscalationPolicyStep", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	if result.Step == nil || result.Step.ID == "" {
+		return nil, errors.New("create escalation policy step: missing step result")
+	}
+	if result.Step.Actions == nil {
+		result.Step.Actions = []Destination{}
+	}
+	return result.Step, nil
+}
+
+func (c *Client) UpdateEscalationPolicyStep(ctx context.Context, input UpdateEscalationPolicyStepInput) error {
+	var result struct {
+		Success bool `json:"updateEscalationPolicyStep"`
+	}
+	if err := c.execute(ctx, "ProviderUpdateEscalationPolicyStep", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("update escalation policy step: API did not confirm success")
 	}
 	return nil
 }

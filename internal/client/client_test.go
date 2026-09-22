@@ -201,3 +201,165 @@ func TestConfiguration(t *testing.T) {
 		t.Fatal("accepted empty token")
 	}
 }
+
+func TestEscalationPolicyProtocol(t *testing.T) {
+	const epID = "33333333-3333-4333-8333-333333333333"
+	const stepID = "44444444-4444-4444-8444-444444444444"
+	validEP := `{"id":"` + epID + `","name":"critical","description":"on-call alerts","repeat":2,"steps":[{"id":"` + stepID + `","stepNumber":0,"delayMinutes":5,"actions":[{"type":"builtin-webhook","args":{"webhook_url":"https://example.com/alerts"}}]}]}`
+
+	seen := []string{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || r.Header.Get("Authorization") != "Bearer test-token" {
+			t.Error("invalid authentication protocol")
+		}
+		var body struct {
+			Query     string          `json:"query"`
+			Operation string          `json:"operationName"`
+			Variables json.RawMessage `json:"variables"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Query != "" {
+			t.Error("must let GoAlert inject canonical document")
+		}
+		seen = append(seen, body.Operation)
+		switch body.Operation {
+		case "ProviderCreateEscalationPolicy":
+			fmt.Fprint(w, `{"data":{"createEscalationPolicy":`+validEP+`}}`)
+		case "ProviderReadEscalationPolicy":
+			fmt.Fprint(w, `{"data":{"escalationPolicy":`+validEP+`}}`)
+		case "ProviderUpdateEscalationPolicy":
+			fmt.Fprint(w, `{"data":{"updateEscalationPolicy":true}}`)
+		case "ProviderDeleteEscalationPolicy":
+			fmt.Fprint(w, `{"data":{"deleteAll":true}}`)
+		case "ProviderCreateEscalationPolicyStep":
+			fmt.Fprint(w, `{"data":{"createEscalationPolicyStep":{"id":"`+stepID+`","stepNumber":1,"delayMinutes":10,"actions":[]}}}`)
+		case "ProviderUpdateEscalationPolicyStep":
+			fmt.Fprint(w, `{"data":{"updateEscalationPolicyStep":true}}`)
+		default:
+			t.Errorf("unexpected operation: %s", body.Operation)
+		}
+	}))
+	defer server.Close()
+
+	c, err := New(server.URL, "test-token", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+
+	desc := "on-call alerts"
+	rep := int64(2)
+	created, err := c.CreateEscalationPolicy(ctx, CreateEscalationPolicyInput{
+		Name:        "critical",
+		Description: &desc,
+		Repeat:      &rep,
+		Steps: []CreateEscalationPolicyStepInput{
+			{
+				DelayMinutes: 5,
+				Actions: []DestinationInput{
+					{Type: "builtin-webhook", Args: map[string]string{"webhook_url": "https://example.com/alerts"}},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateEscalationPolicy: %v", err)
+	}
+	if created.ID != epID || len(created.Steps) != 1 || created.Steps[0].ID != stepID {
+		t.Fatalf("unexpected created policy: %+v", created)
+	}
+
+	read, err := c.ReadEscalationPolicy(ctx, epID)
+	if err != nil {
+		t.Fatalf("ReadEscalationPolicy: %v", err)
+	}
+	if read.Name != "critical" || read.Repeat != 2 || len(read.Steps) != 1 {
+		t.Fatalf("unexpected read policy: %+v", read)
+	}
+
+	if err = c.UpdateEscalationPolicy(ctx, UpdateEscalationPolicyInput{
+		ID:      epID,
+		Name:    &created.Name,
+		StepIDs: &[]string{stepID},
+	}); err != nil {
+		t.Fatalf("UpdateEscalationPolicy: %v", err)
+	}
+
+	policyID := epID
+	step, err := c.CreateEscalationPolicyStep(ctx, CreateEscalationPolicyStepInput{
+		EscalationPolicyID: &policyID,
+		DelayMinutes:       10,
+	})
+	if err != nil {
+		t.Fatalf("CreateEscalationPolicyStep: %v", err)
+	}
+	if step.StepNumber != 1 {
+		t.Fatalf("unexpected step number: %d", step.StepNumber)
+	}
+
+	delMinutes := int64(15)
+	if err = c.UpdateEscalationPolicyStep(ctx, UpdateEscalationPolicyStepInput{
+		ID:           stepID,
+		DelayMinutes: &delMinutes,
+	}); err != nil {
+		t.Fatalf("UpdateEscalationPolicyStep: %v", err)
+	}
+
+	if err = c.DeleteEscalationPolicy(ctx, epID); err != nil {
+		t.Fatalf("DeleteEscalationPolicy: %v", err)
+	}
+
+	if len(seen) != 6 {
+		t.Fatalf("expected 6 operations, saw %d", len(seen))
+	}
+	for _, op := range seen {
+		if !strings.Contains(Document, op+"(") {
+			t.Errorf("operation %s absent from key document", op)
+		}
+	}
+}
+
+func TestEscalationPolicyNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"data":{"escalationPolicy":null}}`)
+	}))
+	defer server.Close()
+
+	c, _ := New(server.URL, "token", false)
+	_, err := c.ReadEscalationPolicy(context.Background(), "00000000-0000-0000-0000-000000000000")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestKeyDocumentMismatchAndInUseErrors(t *testing.T) {
+	t.Run("missing operation error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			fmt.Fprint(w, `{"errors":[{"message":"operation ProviderReadEscalationPolicy not found","extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}}]}`)
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", false)
+		_, err := c.ReadEscalationPolicy(context.Background(), "00000000-0000-0000-0000-000000000000")
+		if err == nil || !strings.Contains(err.Error(), "API key document mismatch") {
+			t.Fatalf("expected API key document mismatch error, got: %v", err)
+		}
+	})
+
+	t.Run("currently in use error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, `{"errors":[{"message":"resource is currently in use"}]}`)
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", false)
+		err := c.DeleteEscalationPolicy(context.Background(), "00000000-0000-0000-0000-000000000000")
+		if err == nil || !errors.Is(err, ErrInUse) {
+			t.Fatalf("expected ErrInUse, got: %v", err)
+		}
+	})
+}
