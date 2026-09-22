@@ -22,9 +22,9 @@ group. This small routing increment does not include the entire delivery chain.
 2. Execute the scoped disposable policy/webhook discovery (V002-DISC) — Completed:
    disposable probes established webhook enablement, atomic inline steps, step reordering/deletion,
    referential integrity, and multi-operation API key compatibility.
-3. Resolve and accept the canonical resource delta (V002-SPEC) — Ready for execution.
-4. Only then hand the issue to spec-driven-development (V002-IMPL), with
-   V002-VERIFY tests and evidence accompanying implementation.
+3. Resolve and accept the canonical resource delta (V002-SPEC) — Completed:
+   canonical specification resolved in docs/specs/goalert-escalation-policy.md.
+4. Hand the issue to spec-driven-development (V002-IMPL) and verification (V002-VERIFY) — Ready.
 
 The current task only creates planning artifacts and GitHub tracking. No normal
 implementation is Ready while step ownership and API behavior remain unresolved.
