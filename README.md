@@ -95,3 +95,8 @@ and [service contract](docs/specs/goalert-service.md) distinguish accepted task
 scope from observed implementation. See the [baseline](docs/sprints/sprint-0-baseline.md),
 [roadmap](docs/roadmap.md) and [proposed Sprint 1](docs/sprints/sprint-1.md).
 The [pinned lifecycle](docs/specs/spec-driven-lifecycle.md) governs future work.
+
+For possible future source-to-chat delivery, review the
+[proposed capability contract](docs/specs/alert-delivery.md) and
+[milestone options](docs/milestones/alert-delivery.md). These are planning
+proposals; the provider currently implements services only.
