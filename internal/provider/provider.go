@@ -63,6 +63,9 @@ func (p *goalertProvider) Configure(ctx context.Context, req provider.ConfigureR
 	resp.ResourceData = c
 }
 func (p *goalertProvider) Resources(context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewServiceResource}
+	return []func() resource.Resource{
+		NewServiceResource,
+		NewEscalationPolicyResource,
+	}
 }
 func (p *goalertProvider) DataSources(context.Context) []func() datasource.DataSource { return nil }

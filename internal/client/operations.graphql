@@ -12,3 +12,57 @@ mutation ProviderUpdateService($id: ID!, $name: String!, $description: String!, 
 mutation ProviderDeleteService($id: ID!) {
   deleteAll(input: [{type: service, id: $id}])
 }
+query ProviderReadEscalationPolicy($id: ID!) {
+  escalationPolicy(id: $id) {
+    id
+    name
+    description
+    repeat
+    steps {
+      id
+      stepNumber
+      delayMinutes
+      actions {
+        type
+        args
+      }
+    }
+  }
+}
+mutation ProviderCreateEscalationPolicy($input: CreateEscalationPolicyInput!) {
+  createEscalationPolicy(input: $input) {
+    id
+    name
+    description
+    repeat
+    steps {
+      id
+      stepNumber
+      delayMinutes
+      actions {
+        type
+        args
+      }
+    }
+  }
+}
+mutation ProviderUpdateEscalationPolicy($input: UpdateEscalationPolicyInput!) {
+  updateEscalationPolicy(input: $input)
+}
+mutation ProviderDeleteEscalationPolicy($id: ID!) {
+  deleteAll(input: [{type: escalationPolicy, id: $id}])
+}
+mutation ProviderCreateEscalationPolicyStep($input: CreateEscalationPolicyStepInput!) {
+  createEscalationPolicyStep(input: $input) {
+    id
+    stepNumber
+    delayMinutes
+    actions {
+      type
+      args
+    }
+  }
+}
+mutation ProviderUpdateEscalationPolicyStep($input: UpdateEscalationPolicyStepInput!) {
+  updateEscalationPolicyStep(input: $input)
+}

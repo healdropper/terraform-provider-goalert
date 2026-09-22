@@ -158,3 +158,27 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Delivery tracking: resolves [issue #6](https://github.com/healdropper/terraform-provider-goalert/issues/6), unblocking V002-IMPL (issue #7) and V002-VERIFY (issue #8).
 - Doctrine assessment: conforms to organization-neutral SpecDD lifecycle and Foundry governance.
 - Verification: `git diff --check`, `python scripts/check_format.py`, `go vet ./...`, and `go test ./...` passed.
+
+## 2026-09-22 - Implement goalert_escalation_policy resource and lifecycle tests
+
+- Goal: implement `goalert_escalation_policy` resource under V002-IMPL ([issue #7](https://github.com/healdropper/terraform-provider-goalert/issues/7)) and verify complete lifecycle and key migration under V002-VERIFY ([issue #8](https://github.com/healdropper/terraform-provider-goalert/issues/8)).
+- Implemented `goalert_escalation_policy` resource using Terraform Plugin Framework (`internal/provider/escalation_policy_resource.go`):
+  - Defined schema with `id`, `name`, `description`, `repeat`, and ordered `step` blocks (`ListNestedBlock`).
+  - Implemented nested `webhook_action` blocks within `step`. Used `UseNonNullStateForUnknown()` plan modifiers on computed step fields (`id`, `step_number`) to support dynamic step additions without plan-null mismatch errors.
+  - Implemented atomic creation submitting inline steps and actions in a single `createEscalationPolicy` mutation.
+  - Implemented step reconciliation: modifying existing steps via `updateEscalationPolicyStep`, creating new steps via `createEscalationPolicyStep`, and reordering/pruning via `updateEscalationPolicy(stepIDs: [...])`.
+  - Implemented drift detection and remote refresh for policies, steps, and webhook actions.
+  - Implemented referential integrity error diagnostics when policy deletion is blocked by referencing services (`ErrInUse`).
+- Updated GraphQL client (`internal/client/client.go`):
+  - Added operations to `internal/client/operations.graphql` for escalation policies, steps, and actions.
+  - Implemented `CreateEscalationPolicy`, `ReadEscalationPolicy`, `UpdateEscalationPolicy`, `DeleteEscalationPolicy`, `CreateEscalationPolicyStep`, and `UpdateEscalationPolicyStep`.
+  - Enhanced error handling to recognize HTTP 422, `wrong query for API key`, and missing operations (`operation X not found`) as `API key document mismatch`, and `currently in use` as `ErrInUse`.
+- Added resource documentation `docs/resources/escalation_policy.md` and Terraform examples in `examples/resources/goalert_escalation_policy/`.
+- Updated test fixtures and acceptance tests:
+  - Enabled webhook support in `compose.yaml` (`GOALERT_WEBHOOK_ENABLE: "true"`) and `scripts/fixture.py` (`setConfig(input: [{id: "Webhook.Enable", value: "true"}])`).
+  - Added comprehensive `policy_acceptance` in `scripts/acceptance.py` covering: atomic creation, nested blocks, step delays, webhooks, in-place reordering, step additions, drift repair, import, referential integrity check on delete, and key migration validation (rejecting old v0.0.1 key without state loss).
+- Verification:
+  - Unit tests: `go test -v ./...` passed (client and provider packages).
+  - Acceptance tests: `python scripts/acceptance.py` passed 100% against real GoAlert v0.34.1 disposable container.
+  - Static analysis: `go fmt ./...`, `go vet ./...`, `git diff --check`, `python scripts/check_format.py`, and `python -m unittest discover -s scripts` passed with zero errors.
+- Doctrine assessment: follows SpecDD lifecycle, preserves generic provider design, ensures zero leakage of sensitive credentials.

@@ -21,5 +21,6 @@ services:
       GOALERT_DB_URL: postgres://goalert:${FIXTURE_DB_PASSWORD}@postgres/goalert?sslmode=disable
       GOALERT_DATA_ENCRYPTION_KEY: ${FIXTURE_ENCRYPTION_KEY:?}
       GOALERT_PUBLIC_URL: http://127.0.0.1:${FIXTURE_PORT:-18081}
+      GOALERT_WEBHOOK_ENABLE: "true"
     ports:
       - "127.0.0.1:${FIXTURE_PORT:-18081}:8081"
