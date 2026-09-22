@@ -23,7 +23,7 @@ tracks transition review; keep its baseline milestone open until reviewed.
 | Review observed contracts and adoption gaps | Process transition, in review | healdropper | Baseline before normal feature delivery |
 | Remaining governance and delivery prerequisites | Technical adoption gap, Complete | healdropper | Resolved in issue #4; Project 1 automation and templates active; [v0.0.2](milestones/v0.0.2.md) |
 | Reconcile Release Please with GoReleaser and choose signing identity | Technical adoption gap, Proposed | healdropper | Preserve existing signing contract; before real release |
-| Alert delivery discovery and policy/step ownership | C, Complete | healdropper | Resolved in issue #5; runtime probes verified; [v0.0.2](milestones/v0.0.2.md) |
+| Alert delivery discovery and policy/step ownership | C, Complete | healdropper | Resolved in issue #5 and #6; canonical spec accepted; [v0.0.2](milestones/v0.0.2.md) |
 | Incoming integration-key lifecycle and secret/state semantics | C, Proposed | healdropper | M2 in [milestone options](milestones/alert-delivery.md); order awaits owner decision |
 | External chat adapter and real source-to-chat demonstration | C, Proposed; consumer-owned delivery | healdropper | M3/M4 in [milestone options](milestones/alert-delivery.md); outside provider runtime |
 | Independent Grafana availability | C, Backlog | healdropper | [Availability RFC](specs/grafana-availability.md); excluded from v0.0.2 |
