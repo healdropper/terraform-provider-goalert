@@ -130,3 +130,18 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   unblocking V002-DISC (issue #5).
 - Doctrine assessment: follows organization-neutral SpecDD lifecycle and Foundry governance.
 - Verification: `git diff --check`, `python scripts/check_format.py`, `go vet ./...` and `go test ./...` passed.
+
+## 2026-09-22 - Prove policy and webhook API feasibility
+
+- Goal: establish API and webhook destination feasibility under V002-DISC on disposable GoAlert v0.34.1.
+- Executed comprehensive probe suite (`scripts/test_feasibility.py`) against live container:
+  - Discovered `builtin-webhook` is disabled by default; setting `Webhook.Enable: true` enables it.
+  - Proved `createEscalationPolicy` atomically creates inline steps with `actions: [{type: "builtin-webhook", args: {webhook_url: ...}}]`.
+  - Proved step deletion and reordering is controlled via `updateEscalationPolicy(stepIDs: [...])`, where omitted steps are deleted automatically.
+  - Proved referential integrity: policy deletion is rejected while attached to a managed service.
+  - Proved validation constraints: `delayMinutes >= 1`, `repeat >= 0`, `webhook_url` requires URI scheme.
+  - Proved multi-operation canonical GraphQL document with AST hash preservation and backwards compatibility with service operations.
+- Updated `docs/research/alert-delivery-feasibility.md`, `docs/milestones/v0.0.2.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
+- Delivery tracking: resolves [issue #5](https://github.com/healdropper/terraform-provider-goalert/issues/5), unblocking V002-SPEC (issue #6).
+- Doctrine assessment: conforms to organization-neutral SpecDD lifecycle and Foundry governance.
+- Verification: live test script `scripts/test_feasibility.py` passed with 100% empirical assertions; `git diff --check`, `python scripts/check_format.py`, `go vet ./...`, and `go test ./...` passed.
