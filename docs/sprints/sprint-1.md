@@ -16,9 +16,11 @@ group. This small routing increment does not include the entire delivery chain.
 
 ## Scope and sequence
 
-1. Review/schedule remaining adoption prerequisites (V002-FOUNDATION).
+1. Review/schedule remaining adoption prerequisites (V002-FOUNDATION) — Completed:
+   audit issue #2 linked, intake templates verified, Project 1 closure workflows verified,
+   and release governance contingency deployed.
 2. Execute the scoped disposable policy/webhook discovery (V002-DISC) after its
-   execution handoff; report actual evidence and limitations.
+   execution handoff; report actual evidence and limitations (Ready).
 3. Resolve and accept the canonical resource delta (V002-SPEC).
 4. Only then hand the issue to spec-driven-development (V002-IMPL), with
    V002-VERIFY tests and evidence accompanying implementation.
