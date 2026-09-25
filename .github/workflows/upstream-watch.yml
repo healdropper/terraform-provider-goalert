@@ -1,0 +1,69 @@
+name: Upstream Watcher
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-upstream:
+    name: Check Target GoAlert Upstream
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Check latest GoAlert release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          UPSTREAM_REPO="target/goalert"
+          LATEST_TAG=$(gh release view --repo "$UPSTREAM_REPO" --json tagName --jq '.tagName')
+          echo "Latest upstream release: $LATEST_TAG"
+
+          CURRENT_VERSION=$(grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" scripts/fixture.py | head -n 1 || echo "")
+          echo "Current tested version: $CURRENT_VERSION"
+
+          if [ "$CURRENT_VERSION" = "$LATEST_TAG" ]; then
+            echo "Provider fixture is up to date with $UPSTREAM_REPO ($CURRENT_VERSION)."
+            exit 0
+          fi
+
+          EXISTING_ISSUE=$(gh issue list --repo healdropper/terraform-provider-goalert --search "GoAlert $LATEST_TAG in:title" --json number --jq '.[0].number')
+          if [ -n "$EXISTING_ISSUE" ]; then
+            echo "Issue #$EXISTING_ISSUE already tracks GoAlert $LATEST_TAG."
+            exit 0
+          fi
+
+          RELEASE_URL="https://github.com/$UPSTREAM_REPO/releases/tag/$LATEST_TAG"
+          DIFF_URL="https://github.com/$UPSTREAM_REPO/compare/$CURRENT_VERSION...$LATEST_TAG"
+
+          BODY=$(cat <<EOF
+          A new upstream release of **GoAlert** is available: **$LATEST_TAG** (currently tested: \`$CURRENT_VERSION\`).
+
+          ### Upstream Details
+          - **Release:** $RELEASE_URL
+          - **Diff:** $DIFF_URL
+
+          ### Assessment & Verification Checklist
+          - [ ] Review upstream release notes and GraphQL schema changes (\`schema.graphql\`).
+          - [ ] Verify if operations in \`internal/client/operations.graphql\` require AST adaptation.
+          - [ ] Update \`scripts/fixture.py\` disposable test container image to \`target/goalert:$LATEST_TAG\`.
+          - [ ] Run disposable PoC: \`make poc\`.
+          - [ ] Run unit and acceptance test suites: \`make test && make acceptance\`.
+          - [ ] Document verified compatibility in \`README.md\` and \`docs/\`.
+          EOF
+          )
+
+          NEW_ISSUE=$(gh issue create --repo healdropper/terraform-provider-goalert \
+            --title "chore(upstream): assess compatibility with GoAlert $LATEST_TAG" \
+            --label "enhancement" \
+            --body "$BODY")
+
+          echo "Created assessment issue: $NEW_ISSUE"
