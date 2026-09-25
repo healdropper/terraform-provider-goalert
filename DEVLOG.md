@@ -1,5 +1,11 @@
 # Development log
 
+## 2026-09-25 — Upstream version watcher workflow (#20)
+
+- Adopted `.github/workflows/upstream-watch.yml` in accordance with the universal doctrine rule.
+- Workflow periodically queries `target/goalert` releases, detects when newer versions exceed `scripts/fixture.py`, and opens an assessment issue with upstream release notes and verification steps.
+- Verification: `make check-format`, `go test ./...`, and `git diff --check` passed.
+
 ## 2026-09-20 — v0.0.1 service milestone
 
 Goal: learn and implement a generic Terraform Plugin Framework provider,
