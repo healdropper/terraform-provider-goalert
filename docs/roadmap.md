@@ -15,9 +15,10 @@ No releases are currently observed; preserve the requested v0.0.x cadence.
   [PR #17](https://github.com/healdropper/terraform-provider-goalert/pull/17) on
   2026-09-22. Successfully deployed and adopted in production cluster `downstream-consumer`.
 
-## Next milestone candidate
+## Active milestone
 
-- **v0.0.3**: Incoming integration keys and alert reception (Issue #9). Backlog candidates also include schedule/rotations (#19), Telegram delivery adapter (#11), and upstream v0.35.0 evaluation (#22).
+- **v0.0.3**: [ingress and integration keys](milestones/v0.0.3.md) and [Sprint 2](sprints/sprint-2.md).
+  Resources: `goalert_integration_key`. Issues [#9](https://github.com/healdropper/terraform-provider-goalert/issues/9), [#24](https://github.com/healdropper/terraform-provider-goalert/issues/24), [#25](https://github.com/healdropper/terraform-provider-goalert/issues/25), [#26](https://github.com/healdropper/terraform-provider-goalert/issues/26).
 
 ## Backlog
 
