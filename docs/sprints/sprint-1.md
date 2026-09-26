@@ -1,9 +1,9 @@
 # Sprint 1: plan and prove a small routing increment
 
-Owner: healdropper. Updated: 2026-09-21.
-Status: small-increment planning direction accepted; discovery execution and
-normal feature implementation have not started in this planning task.
-Detailed resource contract and implementation handoff remain pending.
+Owner: healdropper. Completed: 2026-09-26.
+Status: Completed and closed. All scoped delivery gates (V002-FOUNDATION,
+V002-DISC, V002-SPEC, V002-IMPL, V002-VERIFY) verified. Production adoption
+completed in `the-moonglade/cenarion-watch` via deploy workflow run #36226368007.
 [Milestone v0.0.2](../milestones/v0.0.2.md) is the scope/criteria authority;
 [private board](https://github.com/users/healdropper/projects/1) tracks delivery.
 
@@ -53,7 +53,7 @@ checks and real disposable acceptance. Verify import, drift, auth-error state
 preservation and a second plan without changes. Review merge, issue closure,
 Project status, release and production adoption separately.
 
-No PoC, resource implementation, red-first result, delivery acceptance or release
-has been completed by this sprint document. The dated baseline remains unchanged.
-The 2026-09-21 brainstorm and its alternatives remain in
-[the earlier proposal](../milestones/alert-delivery.md).
+All sprint outcomes completed: `goalert_escalation_policy` resource implemented
+and verified with full lifecycle acceptance against real GoAlert v0.34.1 container.
+Deployed and verified live in `cenarion-watch` applications-configuration environment.
+Milestone v0.0.2 closed.

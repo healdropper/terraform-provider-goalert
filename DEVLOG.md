@@ -1,5 +1,14 @@
 # Development log
 
+## 2026-09-26 — Milestone v0.0.2 closure and production adoption
+
+- Closed Milestone v0.0.2: all scoped delivery gates (V002-FOUNDATION, V002-DISC, V002-SPEC, V002-IMPL, V002-VERIFY) completed and closed on GitHub and Project 1 board.
+- Successfully verified live in production cluster `the-moonglade/cenarion-watch`:
+  - Configured GoAlert API key with canonical operations GraphQL document and `Webhook.Enable: true`.
+  - Automated deployment applied `goalert_escalation_policy.watch_critical` and both `goalert_service` resources without drift.
+  - End-to-end integration verified: Grafana, Prometheus, GoAlert and Alertmanager reporting healthy.
+- Updated `docs/milestones/v0.0.2.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
+
 ## 2026-09-25 — Upstream version watcher workflow (#20)
 
 - Adopted `.github/workflows/upstream-watch.yml` in accordance with the universal doctrine rule.
