@@ -1,5 +1,16 @@
 # Development log
 
+## 2026-09-26 — Ingress key feasibility probe (Issue #9, Gate V003-DISC)
+
+- Executed automated feasibility probe against disposable GoAlert v0.34.1:
+  - Validated `createIntegrationKey` mutation with `grafana` and `generic` types.
+  - Proved direct `Query.integrationKey(id: ID!)` returning `null` on missing IDs for O(1) drift detection.
+  - Confirmed absence of `updateIntegrationKey`: keys are strictly immutable in GoAlert, requiring `RequiresReplace()` for all schema attributes.
+  - Proved `href` format `<url>/api/v2/<type>/incoming?token=<id>`, requiring `Sensitive: true`.
+  - Verified user-role API key permissions: users can create integration keys on accessible services.
+  - Verified end-to-end webhook delivery: Grafana v1 alert payload to `href` returns HTTP 200 and creates unacknowledged alert.
+- Recorded full findings and GraphQL contract in `docs/research/integration-key-feasibility.md`.
+
 ## 2026-09-26 — Milestone v0.0.2 closure and production adoption
 
 - Closed Milestone v0.0.2: all scoped delivery gates (V002-FOUNDATION, V002-DISC, V002-SPEC, V002-IMPL, V002-VERIFY) completed and closed on GitHub and Project 1 board.
