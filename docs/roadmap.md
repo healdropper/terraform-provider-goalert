@@ -1,20 +1,23 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: service scope accepted; small-increment direction selected; detailed
-v0.0.2 resource contract and later capabilities remain Proposed.
+Status: v0.0.1 (services) and v0.0.2 (escalation policies with webhook routing) completed and verified in production.
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
 No releases are currently observed; preserve the requested v0.0.x cadence.
 
-## Current milestone
+## Completed milestones
 
-v0.0.1 candidate: [service contract](specs/goalert-service.md), merged through
-[PR #1](https://github.com/healdropper/terraform-provider-goalert/pull/1) on
-2026-09-21 at `77b6c1c13f5608328206f76ac4668cb1bb0524b1`.
-Merged does not mean released or deployed; no provider release was observed.
-[Audit issue #2](https://github.com/healdropper/terraform-provider-goalert/issues/2)
-tracks transition review; keep its baseline milestone open until reviewed.
+- **v0.0.1**: [service contract](specs/goalert-service.md), merged through
+  [PR #1](https://github.com/healdropper/terraform-provider-goalert/pull/1) on
+  2026-09-21.
+- **v0.0.2**: [routing increment](milestones/v0.0.2.md), merged through
+  [PR #17](https://github.com/healdropper/terraform-provider-goalert/pull/17) on
+  2026-09-22. Successfully deployed and adopted in production cluster `cenarion-watch`.
+
+## Next milestone candidate
+
+- **v0.0.3**: Incoming integration keys and alert reception (Issue #9). Backlog candidates also include schedule/rotations (#19), Telegram delivery adapter (#11), and upstream v0.35.0 evaluation (#22).
 
 ## Backlog
 
