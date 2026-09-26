@@ -1,7 +1,7 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: v0.0.1 (services) and v0.0.2 (escalation policies with webhook routing) completed and verified in production.
+Status: v0.0.1 (services), v0.0.2 (escalation policies with webhook routing), and v0.0.3 (ingress and integration keys) completed.
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
 No releases are currently observed; preserve the requested v0.0.x cadence.
@@ -14,11 +14,10 @@ No releases are currently observed; preserve the requested v0.0.x cadence.
 - **v0.0.2**: [routing increment](milestones/v0.0.2.md), merged through
   [PR #17](https://github.com/healdropper/terraform-provider-goalert/pull/17) on
   2026-09-22. Successfully deployed and adopted in production cluster `downstream-consumer`.
+- **v0.0.3**: [ingress and integration keys](milestones/v0.0.3.md), merged through
+  [PR #30](https://github.com/healdropper/terraform-provider-goalert/pull/30) on
+  2026-09-26. Resources: `goalert_integration_key`. Closed on GitHub.
 
-## Active milestone
-
-- **v0.0.3**: [ingress and integration keys](milestones/v0.0.3.md) and [Sprint 2](sprints/sprint-2.md).
-  Resources: `goalert_integration_key`. Issues [#9](https://github.com/healdropper/terraform-provider-goalert/issues/9), [#24](https://github.com/healdropper/terraform-provider-goalert/issues/24), [#25](https://github.com/healdropper/terraform-provider-goalert/issues/25), [#26](https://github.com/healdropper/terraform-provider-goalert/issues/26).
 
 ## Backlog
 
