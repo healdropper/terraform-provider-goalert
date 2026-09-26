@@ -66,3 +66,24 @@ mutation ProviderCreateEscalationPolicyStep($input: CreateEscalationPolicyStepIn
 mutation ProviderUpdateEscalationPolicyStep($input: UpdateEscalationPolicyStepInput!) {
   updateEscalationPolicyStep(input: $input)
 }
+query ProviderReadIntegrationKey($id: ID!) {
+  integrationKey(id: $id) {
+    id
+    name
+    type
+    href
+    serviceID
+  }
+}
+mutation ProviderCreateIntegrationKey($input: CreateIntegrationKeyInput!) {
+  createIntegrationKey(input: $input) {
+    id
+    name
+    type
+    href
+    serviceID
+  }
+}
+mutation ProviderDeleteIntegrationKey($id: ID!) {
+  deleteAll(input: [{type: integrationKey, id: $id}])
+}

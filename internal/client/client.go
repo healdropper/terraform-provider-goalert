@@ -92,6 +92,20 @@ type DestinationInput struct {
 	Args map[string]string `json:"args,omitempty"`
 }
 
+type IntegrationKey struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Href      string `json:"href"`
+	ServiceID string `json:"serviceID"`
+}
+
+type CreateIntegrationKeyInput struct {
+	ServiceID string `json:"serviceID"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+}
+
 func New(endpoint, token string, allowHTTP bool) (*Client, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil || u == nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") ||
@@ -373,6 +387,67 @@ func (c *Client) UpdateEscalationPolicyStep(ctx context.Context, input UpdateEsc
 	}
 	if !result.Success {
 		return errors.New("update escalation policy step: API did not confirm success")
+	}
+	return nil
+}
+
+func integrationKeyResult(raw json.RawMessage, allowMissing bool) (*IntegrationKey, error) {
+	if bytes.Equal(raw, []byte("null")) && allowMissing {
+		return nil, ErrNotFound
+	}
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, errors.New("missing integration key result")
+	}
+	var ik IntegrationKey
+	if err := json.Unmarshal(raw, &ik); err != nil {
+		return nil, errors.New("malformed integration key result")
+	}
+	if ik.ID == "" || ik.Name == "" || ik.Type == "" || ik.Href == "" || ik.ServiceID == "" {
+		return nil, errors.New("incomplete integration key result")
+	}
+	return &ik, nil
+}
+
+func (c *Client) ReadIntegrationKey(ctx context.Context, id string) (*IntegrationKey, error) {
+	var result struct {
+		IntegrationKey json.RawMessage `json:"integrationKey"`
+	}
+	if err := c.execute(ctx, "ProviderReadIntegrationKey", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	ik, err := integrationKeyResult(result.IntegrationKey, true)
+	if err != nil {
+		return nil, fmt.Errorf("read integration key: %w", err)
+	}
+	if ik.ID != id {
+		return nil, errors.New("read integration key: response ID differs from requested ID")
+	}
+	return ik, nil
+}
+
+func (c *Client) CreateIntegrationKey(ctx context.Context, input CreateIntegrationKeyInput) (*IntegrationKey, error) {
+	var result struct {
+		IntegrationKey json.RawMessage `json:"createIntegrationKey"`
+	}
+	if err := c.execute(ctx, "ProviderCreateIntegrationKey", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	ik, err := integrationKeyResult(result.IntegrationKey, false)
+	if err != nil {
+		return nil, fmt.Errorf("create integration key: %w", err)
+	}
+	return ik, nil
+}
+
+func (c *Client) DeleteIntegrationKey(ctx context.Context, id string) error {
+	var result struct {
+		Success bool `json:"deleteAll"`
+	}
+	if err := c.execute(ctx, "ProviderDeleteIntegrationKey", map[string]string{"id": id}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("delete integration key: API did not confirm success")
 	}
 	return nil
 }

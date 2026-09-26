@@ -22,6 +22,76 @@ mutation ProviderDeleteService($id: ID!) {
 }
 """
 
+V002_DOCUMENT = """query ProviderReadService($id: ID!) {
+  service(id: $id) { id name description escalationPolicy { id } }
+}
+mutation ProviderCreateService($name: String!, $description: String!, $escalationPolicyID: ID!) {
+  createService(input: {name: $name, description: $description, escalationPolicyID: $escalationPolicyID}) {
+    id name description escalationPolicy { id }
+  }
+}
+mutation ProviderUpdateService($id: ID!, $name: String!, $description: String!, $escalationPolicyID: ID!) {
+  updateService(input: {id: $id, name: $name, description: $description, escalationPolicyID: $escalationPolicyID})
+}
+mutation ProviderDeleteService($id: ID!) {
+  deleteAll(input: [{type: service, id: $id}])
+}
+query ProviderReadEscalationPolicy($id: ID!) {
+  escalationPolicy(id: $id) {
+    id
+    name
+    description
+    repeat
+    steps {
+      id
+      stepNumber
+      delayMinutes
+      actions {
+        type
+        args
+      }
+    }
+  }
+}
+mutation ProviderCreateEscalationPolicy($input: CreateEscalationPolicyInput!) {
+  createEscalationPolicy(input: $input) {
+    id
+    name
+    description
+    repeat
+    steps {
+      id
+      stepNumber
+      delayMinutes
+      actions {
+        type
+        args
+      }
+    }
+  }
+}
+mutation ProviderUpdateEscalationPolicy($input: UpdateEscalationPolicyInput!) {
+  updateEscalationPolicy(input: $input)
+}
+mutation ProviderDeleteEscalationPolicy($id: ID!) {
+  deleteAll(input: [{type: escalationPolicy, id: $id}])
+}
+mutation ProviderCreateEscalationPolicyStep($input: CreateEscalationPolicyStepInput!) {
+  createEscalationPolicyStep(input: $input) {
+    id
+    stepNumber
+    delayMinutes
+    actions {
+      type
+      args
+    }
+  }
+}
+mutation ProviderUpdateEscalationPolicyStep($input: UpdateEscalationPolicyStepInput!) {
+  updateEscalationPolicyStep(input: $input)
+}
+"""
+
 def service_acceptance(f, provider_dir, template=None):
     with tempfile.TemporaryDirectory(prefix="goalert-provider-acceptance-") as tmp:
         directory = Path(tmp)
@@ -330,6 +400,179 @@ resource "goalert_service" "svc" {
         print("PASS: clean teardown destroys service and policy on remote GoAlert.", flush=True)
 
 
+def integration_key_acceptance(f, provider_dir):
+    with tempfile.TemporaryDirectory(prefix="goalert-ik-acceptance-") as tmp:
+        directory = Path(tmp)
+        cli = directory / "development.tfrc"
+        cli.write_text('provider_installation {\n  dev_overrides {\n    "registry.terraform.io/healdropper/goalert" = '
+                       + json.dumps(str(provider_dir.resolve()).replace("\\", "/"))
+                       + '\n  }\n  direct { exclude = ["registry.terraform.io/healdropper/goalert"] }\n}\n')
+        env = dict(os.environ, TF_CLI_CONFIG_FILE=str(cli), GOALERT_ENDPOINT=f.url+"/api/graphql",
+                   GOALERT_API_KEY=f.token, TF_IN_AUTOMATION="1", CHECKPOINT_DISABLE="1")
+        for key in list(env):
+            if key.startswith("TF_CLI_ARGS") or key.startswith("TF_LOG") or key in ("TF_DATA_DIR","TF_WORKSPACE"):
+                env.pop(key)
+
+        policy_id = f.policy("IK Acceptance Policy")
+        svc = f.graphql(
+            operation="ProviderCreateService",
+            variables={"name": "IK Acceptance Service", "description": "Parent for keys", "escalationPolicyID": policy_id}
+        )["createService"]
+        service_id = svc["id"]
+
+        config = f"""
+terraform {{
+  required_providers {{
+    goalert = {{ source = "healdropper/goalert" }}
+  }}
+}}
+provider "goalert" {{}}
+
+variable "key_name" {{ type = string }}
+variable "key_type" {{ type = string }}
+
+resource "goalert_integration_key" "test" {{
+  service_id = "{service_id}"
+  name       = var.key_name
+  type       = var.key_type
+}}
+
+output "webhook_url" {{
+  value     = goalert_integration_key.test.href
+  sensitive = true
+}}
+"""
+        (directory/"main.tf").write_text(config)
+
+        def variables(name="Grafana Key", key_type="grafana"):
+            (directory/"terraform.tfvars.json").write_text(json.dumps({
+                "key_name": name,
+                "key_type": key_type,
+            }))
+
+        def tf(*args, accepted=(0,), override=None):
+            return run(["terraform", *args], cwd=directory, env=override or env, accepted=accepted)
+
+        def plan(expected_changes):
+            tf("plan", "-input=false", "-no-color", "-out=plan.bin")
+            summary = json.loads(run(["terraform", "show", "-json", "plan.bin"], cwd=directory, env=env).stdout)
+            changes = [c for c in summary.get("resource_changes", []) if c.get("change", {}).get("actions") != ["no-op"]]
+            assert len(changes) == expected_changes, f"expected {expected_changes} changes, got {len(changes)}"
+
+        def clean():
+            res = tf("plan", "-detailed-exitcode", "-no-color", accepted=(0,))
+            assert res.returncode == 0
+
+        def get_resource_values(address):
+            state = json.loads(tf("show", "-json").stdout)
+            for res in state.get("values", {}).get("root_module", {}).get("resources", []):
+                if res["address"] == address:
+                    return res["values"]
+            raise AssertionError(f"resource {address} not found in state")
+
+        # 1. Create integration key (INT-01, INT-02)
+        variables("Grafana Ingress", "grafana")
+        plan(1)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+        key_state = get_resource_values("goalert_integration_key.test")
+        key_id = key_state["id"]
+        assert key_state["service_id"] == service_id
+        assert key_state["name"] == "Grafana Ingress"
+        assert key_state["type"] == "grafana"
+        assert key_id in key_state["href"]
+        print("PASS: goalert_integration_key created with sensitive href token.", flush=True)
+
+        # 2. Ingress delivery test: post Grafana alert payload to href
+        payload = {
+            "receiver": "goalert",
+            "status": "firing",
+            "alerts": [
+                {
+                    "status": "firing",
+                    "labels": {"alertname": "AcceptanceAlert", "severity": "critical"},
+                    "annotations": {"summary": "Acceptance test triggered"},
+                    "startsAt": "2026-09-26T15:00:00Z",
+                    "fingerprint": "acc123456"
+                }
+            ],
+            "title": "[FIRING:1] AcceptanceAlert",
+            "state": "alerting",
+        }
+        import urllib.request
+        req = urllib.request.Request(
+            key_state["href"],
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            assert resp.status == 200
+        print("PASS: Grafana payload delivered to integration key href.", flush=True)
+
+        # 3. Replacement on attribute change (INT-03)
+        variables("Grafana Ingress Renamed", "grafana")
+        plan(1)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+        new_state = get_resource_values("goalert_integration_key.test")
+        new_key_id = new_state["id"]
+        assert new_key_id != key_id
+        assert new_state["name"] == "Grafana Ingress Renamed"
+        assert new_key_id in new_state["href"]
+        # Old key should be deleted in GoAlert
+        old_read = f.graphql(operation="ProviderReadIntegrationKey", variables={"id": key_id}, raw=True)
+        assert old_read.get("data", {}).get("integrationKey") is None
+        print("PASS: goalert_integration_key replaced on attribute change (old key deleted).", flush=True)
+
+        # 4. Drift detection and repair (INT-05)
+        f.graphql(operation="ProviderDeleteIntegrationKey", variables={"id": new_key_id})
+        plan(1)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+        recreated_state = get_resource_values("goalert_integration_key.test")
+        recreated_id = recreated_state["id"]
+        assert recreated_id != new_key_id
+        print("PASS: external deletion detected; integration key recreated.", flush=True)
+
+        # 5. Import verification (INT-08)
+        import_config = config + f"""
+resource "goalert_integration_key" "imported" {{
+  service_id = "{service_id}"
+  name       = "{recreated_state['name']}"
+  type       = "{recreated_state['type']}"
+}}
+"""
+        (directory/"main.tf").write_text(import_config)
+        tf("import", "goalert_integration_key.imported", f"{service_id}/{recreated_id}")
+        imported_state = get_resource_values("goalert_integration_key.imported")
+        assert imported_state["id"] == recreated_id
+        assert imported_state["href"] == recreated_state["href"]
+        clean()
+        print("PASS: goalert_integration_key imported via compound ID <service_id>/<key_id>.", flush=True)
+
+        # 6. Key migration verification (INT-09): old v0.0.2 API key rejected
+        before_state = (directory / "terraform.tfstate").read_bytes()
+        v002_key = f.key("admin", document=V002_DOCUMENT)
+        bad_key_env = dict(env, GOALERT_API_KEY=v002_key)
+        v002_result = tf("plan", "-input=false", "-no-color", accepted=(1,), override=bad_key_env)
+        v002_out = v002_result.stdout + v002_result.stderr
+        assert any(expected in v002_out for expected in [
+            "wrong query for API key",
+            "API key document mismatch",
+            "HTTP status 422",
+        ])
+        assert (directory / "terraform.tfstate").read_bytes() == before_state
+        print("PASS: old v0.0.2 API key rejected by GoAlert AST hash validation for integration key operations.", flush=True)
+
+        # 7. Clean destroy
+        tf("destroy", "-input=false", "-auto-approve", "-no-color")
+        clean_after = f.graphql(operation="ProviderReadIntegrationKey", variables={"id": recreated_id}, raw=True)
+        assert clean_after.get("data", {}).get("integrationKey") is None
+        f.graphql(operation="ProviderDeleteService", variables={"id": service_id})
+        f.graphql(operation="ProviderDeleteEscalationPolicy", variables={"id": policy_id})
+        print("PASS: clean teardown destroys integration key and parent resources.", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider-dir", type=Path, default=ROOT/"bin")
@@ -339,3 +582,4 @@ if __name__ == "__main__":
         poc(fixture)
         service_acceptance(fixture, args.provider_dir, args.config_template)
         policy_acceptance(fixture, args.provider_dir)
+        integration_key_acceptance(fixture, args.provider_dir)
