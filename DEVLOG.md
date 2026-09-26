@@ -1,5 +1,15 @@
 # Development log
 
+## 2026-09-26 — Integration key contract specification (Issue #24, Gate V003-SPEC)
+
+- Defined canonical specification `docs/specs/goalert-integration-key.md` and resource reference `docs/resources/integration_key.md`:
+  - Resource: `goalert_integration_key`
+  - Attributes: `id` (Computed), `service_id` (Required, RequiresReplace), `name` (Required, RequiresReplace), `type` (Optional, default `"grafana"`, RequiresReplace), `href` (Computed, Sensitive).
+  - Explicit immutability model: since GoAlert has no `updateIntegrationKey`, PlanModifiers enforce resource recreation on any attribute modification.
+  - O(1) direct read using `Query.integrationKey(id: ID!)` with `resp.State.RemoveResource(ctx)` when returning `null`.
+  - Canonical GraphQL document expansion in `internal/client/operations.graphql` adding `ProviderReadIntegrationKey`, `ProviderCreateIntegrationKey`, and `ProviderDeleteIntegrationKey`.
+  - Documented migration path for existing API key tokens.
+
 ## 2026-09-26 — Ingress key feasibility probe (Issue #9, Gate V003-DISC)
 
 - Executed automated feasibility probe against disposable GoAlert v0.34.1:
