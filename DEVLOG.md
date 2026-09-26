@@ -1,5 +1,20 @@
 # Development log
 
+## 2026-09-26 — Integration key implementation and verification (Issues #25 & #26, Gates V003-IMPL & V003-VERIFY)
+
+- Implemented `goalert_integration_key` resource using Terraform Plugin Framework (`internal/provider/integration_key_resource.go`).
+- Expanded canonical operations document `internal/client/operations.graphql` and implemented client methods in `internal/client/client.go`.
+- Added unit tests in `internal/client/client_test.go` and `internal/provider/integration_key_resource_test.go`.
+- Added comprehensive end-to-end acceptance test `integration_key_acceptance` in `scripts/acceptance.py`:
+  - Full CRUD lifecycle and sensitive `href` handling.
+  - Real Grafana v1 payload ingestion to `href` returning HTTP 200.
+  - Replacement on attribute change (deleting old key and creating new key with fresh token).
+  - Drift detection and automatic recreation upon remote external deletion.
+  - Import via standalone `<id>` and compound `<service_id>/<key_id>`.
+  - Upstream AST hash validation: old v0.0.2 API key rejected with clean state preservation.
+  - Complete remote teardown.
+- All unit and acceptance tests passed against real disposable GoAlert v0.34.1 container.
+
 ## 2026-09-26 — Integration key contract specification (Issue #24, Gate V003-SPEC)
 
 - Defined canonical specification `docs/specs/goalert-integration-key.md` and resource reference `docs/resources/integration_key.md`:

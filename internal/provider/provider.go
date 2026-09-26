@@ -66,6 +66,7 @@ func (p *goalertProvider) Resources(context.Context) []func() resource.Resource 
 	return []func() resource.Resource{
 		NewServiceResource,
 		NewEscalationPolicyResource,
+		NewIntegrationKeyResource,
 	}
 }
 func (p *goalertProvider) DataSources(context.Context) []func() datasource.DataSource { return nil }

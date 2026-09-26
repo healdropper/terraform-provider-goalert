@@ -363,3 +363,110 @@ func TestKeyDocumentMismatchAndInUseErrors(t *testing.T) {
 		}
 	})
 }
+
+func TestIntegrationKeyOperations(t *testing.T) {
+	const ikID = "33333333-3333-4333-8333-333333333333"
+	const ikServiceID = "44444444-4444-4444-8444-444444444444"
+	const ikHref = "http://goalert.example.com/api/v2/grafana/incoming?token=" + ikID
+
+	t.Run("create read and delete", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Operation string `json:"operationName"`
+				Variables json.RawMessage
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			switch body.Operation {
+			case "ProviderCreateIntegrationKey":
+				var vars struct {
+					Input CreateIntegrationKeyInput `json:"input"`
+				}
+				_ = json.Unmarshal(body.Variables, &vars)
+				if vars.Input.ServiceID != ikServiceID || vars.Input.Name != "Grafana Key" || vars.Input.Type != "grafana" {
+					t.Errorf("unexpected create input: %+v", vars.Input)
+				}
+				fmt.Fprintf(w, `{"data":{"createIntegrationKey":{"id":"%s","name":"Grafana Key","type":"grafana","href":"%s","serviceID":"%s"}}}`,
+					ikID, ikHref, ikServiceID)
+			case "ProviderReadIntegrationKey":
+				var vars struct {
+					ID string `json:"id"`
+				}
+				_ = json.Unmarshal(body.Variables, &vars)
+				if vars.ID != ikID {
+					t.Errorf("unexpected read ID: %s", vars.ID)
+				}
+				fmt.Fprintf(w, `{"data":{"integrationKey":{"id":"%s","name":"Grafana Key","type":"grafana","href":"%s","serviceID":"%s"}}}`,
+					ikID, ikHref, ikServiceID)
+			case "ProviderDeleteIntegrationKey":
+				var vars struct {
+					ID string `json:"id"`
+				}
+				_ = json.Unmarshal(body.Variables, &vars)
+				if vars.ID != ikID {
+					t.Errorf("unexpected delete ID: %s", vars.ID)
+				}
+				fmt.Fprint(w, `{"data":{"deleteAll":true}}`)
+			default:
+				t.Errorf("unexpected operation: %s", body.Operation)
+			}
+		}))
+		defer server.Close()
+
+		c, err := New(server.URL, "token", true)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		created, err := c.CreateIntegrationKey(context.Background(), CreateIntegrationKeyInput{
+			ServiceID: ikServiceID,
+			Name:      "Grafana Key",
+			Type:      "grafana",
+		})
+		if err != nil {
+			t.Fatalf("unexpected create error: %v", err)
+		}
+		if created.ID != ikID || created.Href != ikHref || created.ServiceID != ikServiceID {
+			t.Fatalf("unexpected created key: %+v", created)
+		}
+
+		read, err := c.ReadIntegrationKey(context.Background(), ikID)
+		if err != nil {
+			t.Fatalf("unexpected read error: %v", err)
+		}
+		if read.ID != ikID || read.Name != "Grafana Key" || read.Type != "grafana" {
+			t.Fatalf("unexpected read key: %+v", read)
+		}
+
+		if err := c.DeleteIntegrationKey(context.Background(), ikID); err != nil {
+			t.Fatalf("unexpected delete error: %v", err)
+		}
+	})
+
+	t.Run("read not found returns ErrNotFound", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"data":{"integrationKey":null}}`)
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		_, err := c.ReadIntegrationKey(context.Background(), ikID)
+		if !errors.Is(err, ErrNotFound) {
+			t.Fatalf("expected ErrNotFound, got: %v", err)
+		}
+	})
+
+	t.Run("delete unconfirmed failure", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"data":{"deleteAll":false}}`)
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		err := c.DeleteIntegrationKey(context.Background(), ikID)
+		if err == nil || !strings.Contains(err.Error(), "did not confirm success") {
+			t.Fatalf("expected unconfirmed success error, got: %v", err)
+		}
+	})
+}
