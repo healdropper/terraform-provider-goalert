@@ -46,16 +46,24 @@ class Fixture:
         self.project = "goalert-provider-" + uuid.uuid4().hex[:12]
         self.env = dict(os.environ, FIXTURE_DB_PASSWORD=secrets.token_hex(24),
                         FIXTURE_ENCRYPTION_KEY=secrets.token_hex(32))
-        if self.env.get("DOCKER_HOST") == "tcp://localhost:2375":
+        if not self.env.get("DOCKER_HOST") or self.env.get("DOCKER_HOST") == "tcp://localhost:2375":
             self.env["DOCKER_HOST"] = "tcp://172.18.90.210:2375"
         self.env.setdefault("DOCKER_API_VERSION", "1.44")
+        if os.name == "nt":
+            self.env["WSLENV"] = "FIXTURE_DB_PASSWORD:FIXTURE_ENCRYPTION_KEY:FIXTURE_PORT"
         self.url = "http://127.0.0.1:" + self.env.get("FIXTURE_PORT", "18081")
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
         self.token = None
         self.key_ids = {}
 
     def compose(self, *args):
-        return run(["docker", "compose", "-p", self.project, "-f", str(ROOT / "compose.yaml"), *args], env=self.env)
+        if os.name == "nt":
+            drive = str(ROOT.drive).lower().rstrip(":")
+            compose_path = f"/mnt/{drive}{str(ROOT.as_posix())[2:]}/compose.yaml"
+            cmd = ["wsl", "-d", "Ubuntu", "docker", "compose", "-p", self.project, "-f", compose_path, *args]
+        else:
+            cmd = ["docker", "compose", "-p", self.project, "-f", str(ROOT / "compose.yaml"), *args]
+        return run(cmd, env=self.env)
 
     def start(self):
         self.compose("up", "-d", "--wait", "--wait-timeout", "120")
