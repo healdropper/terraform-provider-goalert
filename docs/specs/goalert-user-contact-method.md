@@ -1,6 +1,6 @@
 # goalert_user_contact_method resource specification
 
-Authority: [Milestone v0.0.5](../milestones/v0.0.5.md), Gate V005-SPEC, [Issue #39](https://github.com/healdropper/terraform-provider-goalert/issues/39).
+Authority: [Milestone User Identity and Notification Rules](../milestones/user-identity-and-notification-rules.md), Gate V005-SPEC, [Issue #39](https://github.com/healdropper/terraform-provider-goalert/issues/39).
 
 ## 1. Resource identity
 - Resource type: `goalert_user_contact_method`

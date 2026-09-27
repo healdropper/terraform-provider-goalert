@@ -4,7 +4,7 @@ Owner: healdropper.
 Status: Accepted specification for v0.0.4 under V004-SPEC.
 Recorded: 2026-09-27.
 Related: [Issue #32](https://github.com/healdropper/terraform-provider-goalert/issues/32),
-[Milestone v0.0.4](../milestones/v0.0.4.md),
+[Milestone Heartbeat Monitors and Service Labels](../milestones/heartbeat-monitors-and-service-labels.md),
 [Feasibility research](../research/heartbeat-feasibility.md).
 
 ## Requirements and scope
