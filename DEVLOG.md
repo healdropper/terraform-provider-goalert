@@ -280,3 +280,27 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   - Acceptance tests: `python scripts/acceptance.py` passed 100% against real GoAlert v0.34.1 disposable container.
   - Static analysis: `go fmt ./...`, `go vet ./...`, `git diff --check`, `python scripts/check_format.py`, and `python -m unittest discover -s scripts` passed with zero errors.
 - Doctrine assessment: follows SpecDD lifecycle, preserves generic provider design, ensures zero leakage of sensitive credentials.
+
+## 2026-09-27 - Implement v0.0.5 users, contact methods, and notification rules
+
+- Goal: implement human operator identity and user notification management in GoAlert provider for Milestone `v0.0.5` covering issues #38 (V005-DISC), #39 (V005-SPEC), #40 (V005-IMPL), and #41 (V005-VERIFY).
+- Research & Feasibility (Gate V005-DISC):
+  - Probed GoAlert v0.35.0 schema via `scripts/test_user_feasibility.py` (`docs/research/user-feasibility.md`).
+  - Identified requirement for `username` and `password` on user creation.
+  - Proved contact method immutability of `value` in GoAlert (`cannot update value` GraphQL error on update).
+  - Determined fallback search behavior for `data.goalert_user` (search filter matches name; exact email matches require full user listing scan).
+- Specifications & Documentation (Gate V005-SPEC):
+  - Created resource specifications: `docs/specs/goalert-user.md`, `docs/specs/goalert-user-contact-method.md`, `docs/specs/goalert-user-notification-rule.md`, `docs/specs/goalert-user-data-source.md`.
+  - Created user-facing documentation: `docs/resources/user.md`, `docs/resources/user_contact_method.md`, `docs/resources/user_notification_rule.md`, `docs/data-sources/user.md`.
+- Implementation (Gate V005-IMPL):
+  - Added GraphQL queries and mutations to `internal/client/operations.graphql`.
+  - Implemented client methods in `internal/client/client.go` with full mock unit tests in `internal/client/client_test.go`.
+  - Implemented `goalert_user` resource (`internal/provider/user_resource.go`) with in-place updates for name/email/role, replacement on username/password change, and compound `<user_id>/<username>` or bare `<user_id>` import.
+  - Implemented `goalert_user_contact_method` resource (`internal/provider/user_contact_method_resource.go`) with `RequiresReplace()` on `value` and `type`, in-place update for `name`, and compound `<user_id>/<cm_id>` or bare `<cm_id>` import.
+  - Implemented `goalert_user_notification_rule` resource (`internal/provider/user_notification_rule_resource.go`) as an immutable resource requiring replacement on any modification, and compound `<user_id>/<rule_id>` import.
+  - Implemented `goalert_user` data source (`internal/provider/user_data_source.go`) supporting lookup by `id`, exact `name`, or exact `email`.
+  - Registered resources and data source in `internal/provider/provider.go`.
+- Verification (Gate V005-VERIFY):
+  - Unit tests: `go test -v ./...` passed 100%.
+  - Acceptance tests: `python scripts/acceptance.py --suite all` passed 100% against real GoAlert v0.35.0 container across all milestones (PoC, Service, Policy, Integration Key, Heartbeats/Labels/Data Sources, and Users/Contact Methods/Notification Rules).
+  - Static checks: `python scripts/check_format.py` and `git diff --check` passed cleanly.

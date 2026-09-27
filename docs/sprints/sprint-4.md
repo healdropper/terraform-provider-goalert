@@ -1,9 +1,8 @@
 # Sprint 4: human identity, contact methods, and notification rules
 
 Owner: healdropper. Recorded: 2026-09-27.
-Status: Active delivery sprint. [Milestone v0.0.5](../milestones/v0.0.5.md) is open;
-[GitHub milestone 5](https://github.com/healdropper/terraform-provider-goalert/milestone/5) and
-[private board](https://github.com/users/healdropper/projects/1) track delivery.
+Status: Sprint completed. All V005-DISC/SPEC/IMPL/VERIFY gates satisfied with verifiable evidence;
+[GitHub milestone 5](https://github.com/healdropper/terraform-provider-goalert/milestone/5) ready for closure.
 
 ## Goal and user story
 

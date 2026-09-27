@@ -23,8 +23,10 @@ Authority: [Milestone v0.0.5](../milestones/v0.0.5.md), Gate V005-SPEC, [Issue #
 - `name`, `email`, `role`: Mutated in-place via `updateUser(input: {id, name, email, role})`.
 
 ## 4. Import syntax
-- Standard UUID import:
+- Standard UUID or compound `<user_id>/<username>` import:
   ```shell
+  terraform import goalert_user.example 8541866e-eba1-4d6a-b905-3f2fe2da2c02/jane
+  # Or standalone UUID:
   terraform import goalert_user.example 8541866e-eba1-4d6a-b905-3f2fe2da2c02
   ```
-  Note: Since password cannot be read from the GoAlert API, imported state sets password to null.
+  Note: Since password cannot be read from the GoAlert API, imported state sets password to null. Supplying `<user_id>/<username>` populates `username` into state to avoid replacement plans.

@@ -623,3 +623,276 @@ func (c *Client) SearchEscalationPolicies(ctx context.Context, search string) ([
 	}
 	return result.EscalationPolicies.Nodes, nil
 }
+
+type User struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+type CreateUserInput struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type UpdateUserInput struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+type UserContactMethod struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Disabled    bool        `json:"disabled"`
+	Destination Destination `json:"dest"`
+}
+
+func (cm *UserContactMethod) Value() string {
+	if cm.Destination.Args == nil {
+		return ""
+	}
+	if v, ok := cm.Destination.Args["webhook_url"]; ok && v != "" {
+		return v
+	}
+	if v, ok := cm.Destination.Args["phone_number"]; ok && v != "" {
+		return v
+	}
+	if v, ok := cm.Destination.Args["email_address"]; ok && v != "" {
+		return v
+	}
+	for _, v := range cm.Destination.Args {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func (cm *UserContactMethod) Type() string {
+	switch cm.Destination.Type {
+	case "builtin-webhook":
+		return "WEBHOOK"
+	case "builtin-smtp-email":
+		return "EMAIL"
+	case "builtin-twilio-sms":
+		return "SMS"
+	case "builtin-twilio-voice":
+		return "VOICE"
+	case "builtin-slack-dm":
+		return "SLACK_DM"
+	default:
+		return cm.Destination.Type
+	}
+}
+
+type CreateUserContactMethodInput struct {
+	UserID string `json:"userID"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Value  string `json:"value"`
+}
+
+type UpdateUserContactMethodInput struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type UserNotificationRule struct {
+	ID              string `json:"id"`
+	DelayMinutes    int64  `json:"delayMinutes"`
+	ContactMethodID string `json:"contactMethodID"`
+}
+
+type CreateUserNotificationRuleInput struct {
+	UserID          string `json:"userID"`
+	ContactMethodID string `json:"contactMethodID"`
+	DelayMinutes    int64  `json:"delayMinutes"`
+}
+
+func (c *Client) ReadUser(ctx context.Context, id string) (*User, error) {
+	var result struct {
+		User *User `json:"user"`
+	}
+	if err := c.execute(ctx, "ProviderReadUser", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	if result.User == nil {
+		return nil, ErrNotFound
+	}
+	return result.User, nil
+}
+
+func (c *Client) CreateUser(ctx context.Context, input CreateUserInput) (*User, error) {
+	var result struct {
+		User *User `json:"createUser"`
+	}
+	if err := c.execute(ctx, "ProviderCreateUser", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	if result.User == nil {
+		return nil, errors.New("incomplete create user result")
+	}
+	return result.User, nil
+}
+
+func (c *Client) UpdateUser(ctx context.Context, input UpdateUserInput) error {
+	var result struct {
+		Success bool `json:"updateUser"`
+	}
+	return c.execute(ctx, "ProviderUpdateUser", map[string]any{"input": input}, &result)
+}
+
+func (c *Client) DeleteUser(ctx context.Context, id string) error {
+	var result struct {
+		Success bool `json:"deleteAll"`
+	}
+	if err := c.execute(ctx, "ProviderDeleteUser", map[string]string{"id": id}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("delete user: unconfirmed deletion")
+	}
+	return nil
+}
+
+func (c *Client) SearchUsers(ctx context.Context, search string) ([]User, error) {
+	var result struct {
+		Users struct {
+			Nodes []User `json:"nodes"`
+		} `json:"users"`
+	}
+	if err := c.execute(ctx, "ProviderSearchUsers", map[string]string{"search": search}, &result); err != nil {
+		return nil, err
+	}
+	return result.Users.Nodes, nil
+}
+
+func (c *Client) ReadUserContactMethod(ctx context.Context, id string) (*UserContactMethod, error) {
+	var result struct {
+		CM *UserContactMethod `json:"userContactMethod"`
+	}
+	if err := c.execute(ctx, "ProviderReadUserContactMethod", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	if result.CM == nil {
+		return nil, ErrNotFound
+	}
+	return result.CM, nil
+}
+
+func (c *Client) CreateUserContactMethod(ctx context.Context, input CreateUserContactMethodInput) (*UserContactMethod, error) {
+	var result struct {
+		CM *UserContactMethod `json:"createUserContactMethod"`
+	}
+	if err := c.execute(ctx, "ProviderCreateUserContactMethod", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	if result.CM == nil {
+		return nil, errors.New("incomplete create contact method result")
+	}
+	return result.CM, nil
+}
+
+func (c *Client) UpdateUserContactMethod(ctx context.Context, input UpdateUserContactMethodInput) error {
+	var result struct {
+		Success bool `json:"updateUserContactMethod"`
+	}
+	return c.execute(ctx, "ProviderUpdateUserContactMethod", map[string]any{"input": input}, &result)
+}
+
+func (c *Client) DeleteUserContactMethod(ctx context.Context, id string) error {
+	var result struct {
+		Success bool `json:"deleteAll"`
+	}
+	if err := c.execute(ctx, "ProviderDeleteUserContactMethod", map[string]string{"id": id}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("delete contact method: unconfirmed deletion")
+	}
+	return nil
+}
+
+func (c *Client) ReadUserNotificationRules(ctx context.Context, userID string) ([]UserNotificationRule, error) {
+	var result struct {
+		User *struct {
+			NotificationRules []struct {
+				ID            string `json:"id"`
+				DelayMinutes  int64  `json:"delayMinutes"`
+				ContactMethod struct {
+					ID string `json:"id"`
+				} `json:"contactMethod"`
+			} `json:"notificationRules"`
+		} `json:"user"`
+	}
+	if err := c.execute(ctx, "ProviderReadUserNotificationRules", map[string]string{"userID": userID}, &result); err != nil {
+		return nil, err
+	}
+	if result.User == nil {
+		return nil, ErrNotFound
+	}
+	rules := make([]UserNotificationRule, 0, len(result.User.NotificationRules))
+	for _, r := range result.User.NotificationRules {
+		rules = append(rules, UserNotificationRule{
+			ID:              r.ID,
+			DelayMinutes:    r.DelayMinutes,
+			ContactMethodID: r.ContactMethod.ID,
+		})
+	}
+	return rules, nil
+}
+
+func (c *Client) ReadUserNotificationRule(ctx context.Context, userID, ruleID string) (*UserNotificationRule, error) {
+	rules, err := c.ReadUserNotificationRules(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rules {
+		if r.ID == ruleID {
+			return &r, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
+func (c *Client) CreateUserNotificationRule(ctx context.Context, input CreateUserNotificationRuleInput) (*UserNotificationRule, error) {
+	var result struct {
+		Rule *struct {
+			ID            string `json:"id"`
+			DelayMinutes  int64  `json:"delayMinutes"`
+			ContactMethod struct {
+				ID string `json:"id"`
+			} `json:"contactMethod"`
+		} `json:"createUserNotificationRule"`
+	}
+	if err := c.execute(ctx, "ProviderCreateUserNotificationRule", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	if result.Rule == nil {
+		return nil, errors.New("incomplete create notification rule result")
+	}
+	return &UserNotificationRule{
+		ID:              result.Rule.ID,
+		DelayMinutes:    result.Rule.DelayMinutes,
+		ContactMethodID: result.Rule.ContactMethod.ID,
+	}, nil
+}
+
+func (c *Client) DeleteUserNotificationRule(ctx context.Context, id string) error {
+	var result struct {
+		Success bool `json:"deleteAll"`
+	}
+	if err := c.execute(ctx, "ProviderDeleteUserNotificationRule", map[string]string{"id": id}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("delete notification rule: unconfirmed deletion")
+	}
+	return nil
+}

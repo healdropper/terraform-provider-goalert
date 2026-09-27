@@ -33,8 +33,11 @@ resource "goalert_user" "lead" {
 
 ## Import
 
-Users can be imported using their UUID:
+Users can be imported using their UUID or compound `<user_id>/<username>` (recommended to populate the required `username` attribute into Terraform state):
 
 ```shell
+terraform import goalert_user.lead 8541866e-eba1-4d6a-b905-3f2fe2da2c02/jane
+
+# Or with standalone UUID:
 terraform import goalert_user.lead 8541866e-eba1-4d6a-b905-3f2fe2da2c02
 ```

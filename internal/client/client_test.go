@@ -635,3 +635,203 @@ func TestSearchQueries(t *testing.T) {
 		t.Fatalf("unexpected policies search result: %v, err: %v", policies, err)
 	}
 }
+
+func TestUserOperations(t *testing.T) {
+	const userID = "44444444-4444-4444-8444-444444444444"
+
+	t.Run("full user lifecycle", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Operation string `json:"operationName"`
+				Variables map[string]any
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			switch body.Operation {
+			case "ProviderCreateUser":
+				fmt.Fprint(w, `{"data":{"createUser":{"id":"`+userID+`","name":"Alice","email":"alice@example.com","role":"user"}}}`)
+			case "ProviderReadUser":
+				fmt.Fprint(w, `{"data":{"user":{"id":"`+userID+`","name":"Alice Senior","email":"alice@example.com","role":"admin"}}}`)
+			case "ProviderUpdateUser":
+				fmt.Fprint(w, `{"data":{"updateUser":true}}`)
+			case "ProviderDeleteUser":
+				fmt.Fprint(w, `{"data":{"deleteAll":true}}`)
+			case "ProviderSearchUsers":
+				fmt.Fprint(w, `{"data":{"users":{"nodes":[{"id":"`+userID+`","name":"Alice","email":"alice@example.com","role":"user"}]}}}`)
+			default:
+				t.Errorf("unexpected operation: %s", body.Operation)
+			}
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		u, err := c.CreateUser(context.Background(), CreateUserInput{
+			Name:     "Alice",
+			Email:    "alice@example.com",
+			Role:     "user",
+			Username: "alice",
+			Password: "Password123!",
+		})
+		if err != nil || u.ID != userID {
+			t.Fatalf("unexpected create user: %v, err: %v", u, err)
+		}
+
+		if err := c.UpdateUser(context.Background(), UpdateUserInput{
+			ID:    userID,
+			Name:  "Alice Senior",
+			Email: "alice@example.com",
+			Role:  "admin",
+		}); err != nil {
+			t.Fatalf("unexpected update user error: %v", err)
+		}
+
+		readU, err := c.ReadUser(context.Background(), userID)
+		if err != nil || readU.Role != "admin" {
+			t.Fatalf("unexpected read user: %v, err: %v", readU, err)
+		}
+
+		users, err := c.SearchUsers(context.Background(), "Alice")
+		if err != nil || len(users) != 1 {
+			t.Fatalf("unexpected search users: %v, err: %v", users, err)
+		}
+
+		if err := c.DeleteUser(context.Background(), userID); err != nil {
+			t.Fatalf("unexpected delete user error: %v", err)
+		}
+	})
+
+	t.Run("read not found returns ErrNotFound", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"data":{"user":null}}`)
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		_, err := c.ReadUser(context.Background(), userID)
+		if !errors.Is(err, ErrNotFound) {
+			t.Fatalf("expected ErrNotFound, got: %v", err)
+		}
+	})
+}
+
+func TestUserContactMethodOperations(t *testing.T) {
+	const cmID = "55555555-5555-4555-8555-555555555555"
+	const uID = "44444444-4444-4444-8444-444444444444"
+
+	t.Run("full contact method lifecycle", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Operation string `json:"operationName"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			switch body.Operation {
+			case "ProviderCreateUserContactMethod":
+				fmt.Fprint(w, `{"data":{"createUserContactMethod":{"id":"`+cmID+`","name":"Ops Webhook","disabled":false,"dest":{"type":"builtin-webhook","args":{"webhook_url":"https://example.com/hook"}}}}}`)
+			case "ProviderReadUserContactMethod":
+				fmt.Fprint(w, `{"data":{"userContactMethod":{"id":"`+cmID+`","name":"Ops Webhook","disabled":false,"dest":{"type":"builtin-webhook","args":{"webhook_url":"https://example.com/hook"}}}}}`)
+			case "ProviderUpdateUserContactMethod":
+				fmt.Fprint(w, `{"data":{"updateUserContactMethod":true}}`)
+			case "ProviderDeleteUserContactMethod":
+				fmt.Fprint(w, `{"data":{"deleteAll":true}}`)
+			default:
+				t.Errorf("unexpected operation: %s", body.Operation)
+			}
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		cm, err := c.CreateUserContactMethod(context.Background(), CreateUserContactMethodInput{
+			UserID: uID,
+			Name:   "Ops Webhook",
+			Type:   "WEBHOOK",
+			Value:  "https://example.com/hook",
+		})
+		if err != nil || cm.ID != cmID || cm.Value() != "https://example.com/hook" || cm.Type() != "WEBHOOK" {
+			t.Fatalf("unexpected create contact method: %v, err: %v", cm, err)
+		}
+
+		if err := c.UpdateUserContactMethod(context.Background(), UpdateUserContactMethodInput{
+			ID:   cmID,
+			Name: "Ops Webhook Updated",
+		}); err != nil {
+			t.Fatalf("unexpected update error: %v", err)
+		}
+
+		readCM, err := c.ReadUserContactMethod(context.Background(), cmID)
+		if err != nil || readCM.ID != cmID {
+			t.Fatalf("unexpected read contact method: %v, err: %v", readCM, err)
+		}
+
+		if err := c.DeleteUserContactMethod(context.Background(), cmID); err != nil {
+			t.Fatalf("unexpected delete error: %v", err)
+		}
+	})
+
+	t.Run("read not found returns ErrNotFound", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"data":{"userContactMethod":null}}`)
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		_, err := c.ReadUserContactMethod(context.Background(), cmID)
+		if !errors.Is(err, ErrNotFound) {
+			t.Fatalf("expected ErrNotFound, got: %v", err)
+		}
+	})
+}
+
+func TestUserNotificationRuleOperations(t *testing.T) {
+	const nrID = "66666666-6666-4666-8666-666666666666"
+	const uID = "44444444-4444-4444-8444-444444444444"
+	const cmID = "55555555-5555-4555-8555-555555555555"
+
+	t.Run("notification rule lifecycle", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Operation string `json:"operationName"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			switch body.Operation {
+			case "ProviderCreateUserNotificationRule":
+				fmt.Fprint(w, `{"data":{"createUserNotificationRule":{"id":"`+nrID+`","delayMinutes":10,"contactMethod":{"id":"`+cmID+`"}}}}`)
+			case "ProviderReadUserNotificationRules":
+				fmt.Fprint(w, `{"data":{"user":{"id":"`+uID+`","notificationRules":[{"id":"`+nrID+`","delayMinutes":10,"contactMethod":{"id":"`+cmID+`"}}]}}}`)
+			case "ProviderDeleteUserNotificationRule":
+				fmt.Fprint(w, `{"data":{"deleteAll":true}}`)
+			default:
+				t.Errorf("unexpected operation: %s", body.Operation)
+			}
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		nr, err := c.CreateUserNotificationRule(context.Background(), CreateUserNotificationRuleInput{
+			UserID:          uID,
+			ContactMethodID: cmID,
+			DelayMinutes:    10,
+		})
+		if err != nil || nr.ID != nrID || nr.DelayMinutes != 10 || nr.ContactMethodID != cmID {
+			t.Fatalf("unexpected create notification rule: %v, err: %v", nr, err)
+		}
+
+		rules, err := c.ReadUserNotificationRules(context.Background(), uID)
+		if err != nil || len(rules) != 1 {
+			t.Fatalf("unexpected read rules: %v, err: %v", rules, err)
+		}
+
+		rule, err := c.ReadUserNotificationRule(context.Background(), uID, nrID)
+		if err != nil || rule.ID != nrID {
+			t.Fatalf("unexpected read single rule: %v, err: %v", rule, err)
+		}
+
+		if err := c.DeleteUserNotificationRule(context.Background(), nrID); err != nil {
+			t.Fatalf("unexpected delete rule error: %v", err)
+		}
+	})
+}

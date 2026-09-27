@@ -116,6 +116,66 @@ mutation ProviderDeleteIntegrationKey($id: ID!) {
 }
 """
 
+V004_DOCUMENT = V003_DOCUMENT + """query ProviderReadHeartbeatMonitor($id: ID!) {
+  heartbeatMonitor(id: $id) {
+    id
+    serviceID
+    name
+    timeoutMinutes
+    lastState
+    href
+  }
+}
+mutation ProviderCreateHeartbeatMonitor($input: CreateHeartbeatMonitorInput!) {
+  createHeartbeatMonitor(input: $input) {
+    id
+    serviceID
+    name
+    timeoutMinutes
+    lastState
+    href
+  }
+}
+mutation ProviderUpdateHeartbeatMonitor($input: UpdateHeartbeatMonitorInput!) {
+  updateHeartbeatMonitor(input: $input)
+}
+mutation ProviderDeleteHeartbeatMonitor($id: ID!) {
+  deleteAll(input: [{type: heartbeatMonitor, id: $id}])
+}
+mutation ProviderSetServiceLabel($input: SetLabelInput!) {
+  setLabel(input: $input)
+}
+query ProviderReadServiceLabels($id: ID!) {
+  service(id: $id) {
+    id
+    labels {
+      key
+      value
+    }
+  }
+}
+query ProviderSearchServices($search: String!) {
+  services(input: {search: $search, first: 15}) {
+    nodes {
+      id
+      name
+      description
+      escalationPolicy { id }
+    }
+  }
+}
+query ProviderSearchEscalationPolicies($search: String!) {
+  escalationPolicies(input: {search: $search, first: 15}) {
+    nodes {
+      id
+      name
+      description
+      repeat
+    }
+  }
+}
+"""
+
 
 def service_acceptance(f, provider_dir, template=None):
     with tempfile.TemporaryDirectory(prefix="goalert-provider-acceptance-") as tmp:
@@ -804,14 +864,244 @@ resource "goalert_service_label" "imported_lbl" {{
         print("PASS: clean teardown destroys v0.0.4 resources on remote GoAlert.", flush=True)
 
 
+def v005_acceptance(f, provider_dir):
+    with tempfile.TemporaryDirectory(prefix="goalert-v005-acceptance-") as tmp:
+        directory = Path(tmp)
+        cli = directory / "development.tfrc"
+        cli.write_text('provider_installation {\n  dev_overrides {\n    "registry.terraform.io/healdropper/goalert" = '
+                       + json.dumps(str(provider_dir.resolve()).replace("\\", "/"))
+                       + '\n  }\n  direct { exclude = ["registry.terraform.io/healdropper/goalert"] }\n}\n')
+        env = dict(os.environ, TF_CLI_CONFIG_FILE=str(cli), GOALERT_ENDPOINT=f.url+"/api/graphql",
+                   GOALERT_API_KEY=f.token, TF_IN_AUTOMATION="1", CHECKPOINT_DISABLE="1")
+        for key in list(env):
+            if key.startswith("TF_CLI_ARGS") or key.startswith("TF_LOG") or key in ("TF_DATA_DIR","TF_WORKSPACE"):
+                env.pop(key)
+
+        config = """
+terraform {
+  required_providers {
+    goalert = { source = "healdropper/goalert" }
+  }
+}
+provider "goalert" {}
+
+variable "user_name" { type = string }
+variable "user_email" { type = string }
+variable "user_role" { type = string }
+variable "cm_name" { type = string }
+variable "cm_value" { type = string }
+
+resource "goalert_user" "operator" {
+  name     = var.user_name
+  email    = var.user_email
+  role     = var.user_role
+  username = "acceptance-operator"
+  password = "Password123!"
+}
+
+resource "goalert_user_contact_method" "webhook" {
+  user_id = goalert_user.operator.id
+  name    = var.cm_name
+  type    = "WEBHOOK"
+  value   = var.cm_value
+}
+
+resource "goalert_user_notification_rule" "immediate" {
+  user_id           = goalert_user.operator.id
+  contact_method_id = goalert_user_contact_method.webhook.id
+  delay_minutes     = 0
+}
+
+data "goalert_user" "by_id" {
+  id = goalert_user.operator.id
+}
+
+data "goalert_user" "by_name" {
+  name       = var.user_name
+  depends_on = [goalert_user.operator]
+}
+
+data "goalert_user" "by_email" {
+  email      = var.user_email
+  depends_on = [goalert_user.operator]
+}
+
+output "ds_user_role" {
+  value = data.goalert_user.by_id.role
+}
+
+output "ds_user_name" {
+  value = data.goalert_user.by_email.name
+}
+"""
+        (directory/"main.tf").write_text(config)
+
+        def variables(u_name="Alice DevOps", u_email="alice.devops@example.com", u_role="user",
+                      cm_name="OnCall Webhook", cm_val="https://example.com/alerts"):
+            (directory/"terraform.tfvars.json").write_text(json.dumps({
+                "user_name": u_name,
+                "user_email": u_email,
+                "user_role": u_role,
+                "cm_name": cm_name,
+                "cm_value": cm_val,
+            }))
+
+        def tf(*args, accepted=(0,), override=None):
+            return run(["terraform", *args], cwd=directory, env=override or env, accepted=accepted)
+
+        def plan(expected_changes):
+            tf("plan", "-input=false", "-no-color", "-out=plan.bin")
+            summary = json.loads(run(["terraform", "show", "-json", "plan.bin"], cwd=directory, env=env).stdout)
+            changes = [c for c in summary.get("resource_changes", []) if c.get("mode") == "managed" and c.get("change", {}).get("actions") != ["no-op"]]
+            assert len(changes) == expected_changes, f"expected {expected_changes} changes, got {len(changes)}"
+
+        def clean():
+            res = tf("plan", "-detailed-exitcode", "-no-color", accepted=(0,))
+            assert res.returncode == 0
+            (directory/"plan.bin").unlink(missing_ok=True)
+
+        def get_resource_values(address):
+            result = tf("show", "-json")
+            state = json.loads(result.stdout)
+            for res in state.get("values", {}).get("root_module", {}).get("resources", []):
+                if res.get("address") == address:
+                    return res.get("values", {})
+            return None
+
+        # 1. Initial creation (user, contact method, notification rule: 3 resources)
+        variables("Alice DevOps", "alice.devops@example.com", "user", "OnCall Webhook", "https://example.com/alerts")
+        plan(3)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        user_state = get_resource_values("goalert_user.operator")
+        cm_state = get_resource_values("goalert_user_contact_method.webhook")
+        nr_state = get_resource_values("goalert_user_notification_rule.immediate")
+        assert user_state is not None, "missing user state"
+        assert cm_state is not None, "missing contact method state"
+        assert nr_state is not None, "missing notification rule state"
+
+        user_id = user_state["id"]
+        cm_id = cm_state["id"]
+        nr_id = nr_state["id"]
+        assert user_state["name"] == "Alice DevOps"
+        assert user_state["role"] == "user"
+        assert cm_state["name"] == "OnCall Webhook"
+        assert cm_state["value"] == "https://example.com/alerts"
+        assert nr_state["delay_minutes"] == 0
+        print("PASS: goalert_user, goalert_user_contact_method, goalert_user_notification_rule created successfully.", flush=True)
+
+        # 2. Verify data sources
+        output_res = tf("output", "-json")
+        outputs = json.loads(output_res.stdout)
+        assert outputs["ds_user_role"]["value"] == "user"
+        assert outputs["ds_user_name"]["value"] == "Alice DevOps"
+        print("PASS: data.goalert_user lookups by id, name, and email verified.", flush=True)
+
+        # 3. In-place update of user and contact method
+        variables("Alice Lead DevOps", "alice.lead@example.com", "admin", "Primary Webhook", "https://example.com/alerts")
+        plan(2)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        updated_u = get_resource_values("goalert_user.operator")
+        updated_cm = get_resource_values("goalert_user_contact_method.webhook")
+        assert updated_u["id"] == user_id, "user was unexpectedly replaced"
+        assert updated_u["name"] == "Alice Lead DevOps"
+        assert updated_u["role"] == "admin"
+        assert updated_cm["id"] == cm_id, "contact method was unexpectedly replaced"
+        assert updated_cm["name"] == "Primary Webhook"
+        assert updated_cm["value"] == "https://example.com/alerts"
+        print("PASS: in-place update for user and contact method verified.", flush=True)
+
+        # 4. Drift detection and repair
+        f.graphql(operation="ProviderDeleteUserContactMethod", variables={"id": cm_id})
+        # Deleting contact method also cascade-deletes the notification rule in GoAlert, so both will be recreated
+        tf("apply", "-input=false", "-auto-approve", "-no-color")
+        clean()
+        recreated_cm = get_resource_values("goalert_user_contact_method.webhook")
+        recreated_cm_id = recreated_cm["id"]
+        assert recreated_cm_id != cm_id
+        recreated_nr = get_resource_values("goalert_user_notification_rule.immediate")
+        recreated_nr_id = recreated_nr["id"]
+        assert recreated_nr_id != nr_id
+        print("PASS: external contact method deletion detected; contact method and rule recreated.", flush=True)
+
+        # 5. Import verification
+        import_config = config + f"""
+resource "goalert_user" "imported_user" {{
+  name     = "{updated_u['name']}"
+  email    = "{updated_u['email']}"
+  role     = "{updated_u['role']}"
+  username = "imported-user"
+}}
+
+resource "goalert_user_contact_method" "imported_cm" {{
+  user_id = "{user_id}"
+  name    = "{recreated_cm['name']}"
+  type    = "WEBHOOK"
+  value   = "{recreated_cm['value']}"
+}}
+
+resource "goalert_user_notification_rule" "imported_nr" {{
+  user_id           = "{user_id}"
+  contact_method_id = "{recreated_cm_id}"
+  delay_minutes     = 0
+}}
+"""
+        (directory/"main.tf").write_text(import_config)
+        tf("import", "goalert_user.imported_user", f"{user_id}/imported-user")
+        imported_u = get_resource_values("goalert_user.imported_user")
+        assert imported_u["id"] == user_id
+        assert imported_u["username"] == "imported-user"
+
+        tf("import", "goalert_user_contact_method.imported_cm", f"{user_id}/{recreated_cm_id}")
+        imported_cm = get_resource_values("goalert_user_contact_method.imported_cm")
+        assert imported_cm["id"] == recreated_cm_id
+
+        tf("import", "goalert_user_notification_rule.imported_nr", f"{user_id}/{recreated_nr_id}")
+        imported_nr = get_resource_values("goalert_user_notification_rule.imported_nr")
+        assert imported_nr["id"] == recreated_nr_id
+        clean()
+        print("PASS: user, contact method, and notification rule imported successfully.", flush=True)
+
+        # 6. AST key migration test: v0.0.4 key rejected for v0.0.5 operations
+        before_state = (directory / "terraform.tfstate").read_bytes()
+        v004_key = f.key("admin", document=V004_DOCUMENT)
+        bad_key_env = dict(env, GOALERT_API_KEY=v004_key)
+        v004_result = tf("plan", "-input=false", "-no-color", accepted=(1,), override=bad_key_env)
+        v004_out = v004_result.stdout + v004_result.stderr
+        assert any(expected in v004_out for expected in [
+            "wrong query for API key",
+            "API key document mismatch",
+            "HTTP status 422",
+        ])
+        assert (directory / "terraform.tfstate").read_bytes() == before_state
+        print("PASS: old v0.0.4 API key rejected by GoAlert AST hash validation for v0.0.5 operations.", flush=True)
+
+        # 7. Clean destroy
+        tf("destroy", "-input=false", "-auto-approve", "-no-color")
+        clean_after = f.graphql(operation="ProviderReadUser", variables={"id": user_id}, raw=True)
+        assert clean_after.get("data", {}).get("user") is None
+        print("PASS: clean teardown destroys v0.0.5 resources on remote GoAlert.", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider-dir", type=Path, default=ROOT/"bin")
     parser.add_argument("--config-template", type=Path)
+    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005"], default="all")
     args = parser.parse_args()
     with disposable() as fixture:
-        poc(fixture)
-        service_acceptance(fixture, args.provider_dir, args.config_template)
-        policy_acceptance(fixture, args.provider_dir)
-        integration_key_acceptance(fixture, args.provider_dir)
-        v004_acceptance(fixture, args.provider_dir)
+        if args.suite in ("all", "poc"):
+            poc(fixture)
+        if args.suite in ("all", "service"):
+            service_acceptance(fixture, args.provider_dir, args.config_template)
+        if args.suite in ("all", "policy"):
+            policy_acceptance(fixture, args.provider_dir)
+        if args.suite in ("all", "integration_key"):
+            integration_key_acceptance(fixture, args.provider_dir)
+        if args.suite in ("all", "v004"):
+            v004_acceptance(fixture, args.provider_dir)
+        if args.suite in ("all", "v005"):
+            v005_acceptance(fixture, args.provider_dir)
