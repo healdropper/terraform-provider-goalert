@@ -22,16 +22,17 @@ Preserve the v0.0.x cadence during private development until the v1.0.0 Registry
   2026-09-27. Resources: `goalert_heartbeat_monitor`, `goalert_service_label`.
   Data sources: `goalert_service`, `goalert_escalation_policy`, `goalert_integration_key`, `goalert_heartbeat_monitor`.
   Closed on GitHub.
+- **v0.0.5**: [human identity, contact methods, and notification rules](milestones/v0.0.5.md), implemented on 2026-09-27.
+  Resources: `goalert_user`, `goalert_user_contact_method`, `goalert_user_notification_rule`.
+  Data sources: `goalert_user`. Ready for merge.
 
 ## Active milestone
 
-- **v0.0.5**: [human identity, contact methods, and notification rules](milestones/v0.0.5-preview.md).
-  - Scope: `goalert_user`, `goalert_user_contact_method`, `goalert_user_notification_rule` resources and user data source.
+- **v0.0.6**: [on-call shift rotations and escalation targets](milestones/v0.0.6-preview.md).
+  - Scope: `goalert_rotation` resource, data source, and expanding `goalert_escalation_policy` steps to target users and rotations.
 
 ## Planned milestones (full API coverage & Registry launch)
 
-- **v0.0.5**: [human identity, contact methods, and notification rules](milestones/v0.0.5-preview.md).
-  - Scope: `goalert_user`, `goalert_user_contact_method`, `goalert_user_notification_rule` resources and user data source.
 - **v0.0.6**: [on-call shift rotations and escalation targets](milestones/v0.0.6-preview.md).
   - Scope: `goalert_rotation` resource, data source, and expanding `goalert_escalation_policy` steps to target users and rotations.
 - **v0.0.7**: [schedules, shifts, targets, and user overrides](milestones/v0.0.7-preview.md).

@@ -143,3 +143,87 @@ query ProviderSearchEscalationPolicies($search: String!) {
     }
   }
 }
+query ProviderReadUser($id: ID!) {
+  user(id: $id) {
+    id
+    name
+    email
+    role
+  }
+}
+mutation ProviderCreateUser($input: CreateUserInput!) {
+  createUser(input: $input) {
+    id
+    name
+    email
+    role
+  }
+}
+mutation ProviderUpdateUser($input: UpdateUserInput!) {
+  updateUser(input: $input)
+}
+mutation ProviderDeleteUser($id: ID!) {
+  deleteAll(input: [{type: user, id: $id}])
+}
+query ProviderSearchUsers($search: String!) {
+  users(input: {search: $search, first: 15}) {
+    nodes {
+      id
+      name
+      email
+      role
+    }
+  }
+}
+query ProviderReadUserContactMethod($id: ID!) {
+  userContactMethod(id: $id) {
+    id
+    name
+    disabled
+    dest {
+      type
+      args
+    }
+  }
+}
+mutation ProviderCreateUserContactMethod($input: CreateUserContactMethodInput!) {
+  createUserContactMethod(input: $input) {
+    id
+    name
+    disabled
+    dest {
+      type
+      args
+    }
+  }
+}
+mutation ProviderUpdateUserContactMethod($input: UpdateUserContactMethodInput!) {
+  updateUserContactMethod(input: $input)
+}
+mutation ProviderDeleteUserContactMethod($id: ID!) {
+  deleteAll(input: [{type: contactMethod, id: $id}])
+}
+query ProviderReadUserNotificationRules($userID: ID!) {
+  user(id: $userID) {
+    id
+    notificationRules {
+      id
+      delayMinutes
+      contactMethod {
+        id
+      }
+    }
+  }
+}
+mutation ProviderCreateUserNotificationRule($input: CreateUserNotificationRuleInput!) {
+  createUserNotificationRule(input: $input) {
+    id
+    delayMinutes
+    contactMethod {
+      id
+    }
+  }
+}
+mutation ProviderDeleteUserNotificationRule($id: ID!) {
+  deleteAll(input: [{type: notificationRule, id: $id}])
+}
