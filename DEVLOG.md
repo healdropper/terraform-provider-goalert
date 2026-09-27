@@ -1,5 +1,16 @@
 # Development log
 
+## 2026-09-27 — Milestone planning: Rotations and Escalation Targets and doctrine milestone naming alignment
+
+- Renamed past GitHub milestones and updated `docs/roadmap.md` to follow the updated Spec-Driven Lifecycle doctrine: milestones represent functional delivery themes rather than strict SemVer patch increments.
+  - Milestone 2: `Escalation Policies and Webhook Routing` (was `v0.0.2`).
+  - Milestone 3: `Ingress and Integration Keys` (was `v0.0.3`).
+  - Milestone 4: `Heartbeat Monitors and Service Labels` (was `v0.0.4`).
+  - Milestone 5: `User Identity and Notification Rules` (was `v0.0.5`).
+- Created active GitHub Milestone 6: `Rotations and Escalation Targets`.
+- Authored canonical milestone plan `docs/milestones/rotations-and-escalation-targets.md`.
+- Opened delivery issues #43 (ROT-DISC), #44 (ROT-SPEC), #45 (ROT-IMPL), and #46 (ROT-VERIFY).
+
 ## 2026-09-27 — Milestone v0.0.4 delivery: heartbeats, labels, data sources, and v0.35.0 (Issues #18, #22, #32, #33, #34)
 
 - **V004-UPSTREAM (Issue #22):** Upgraded upstream GoAlert container image to `goalert/goalert:v0.35.0` (digest `sha256:f090a90538d7e61446aad245c21a7a1694d36d7b4f6c56fc55e9cc7405d9c03f`). Updated `compose.yaml` and verified backwards compatibility for all provider operations.

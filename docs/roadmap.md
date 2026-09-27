@@ -1,45 +1,45 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: v0.0.1, v0.0.2, v0.0.3, and v0.0.4 completed. v0.0.5 (user identity, contact methods, and notification rules) next.
+Status: Service Contract, Escalation Policies and Webhook Routing, Ingress and Integration Keys, Heartbeat Monitors and Service Labels, and User Identity and Notification Rules completed. Rotations and Escalation Targets active next.
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
-Preserve the v0.0.x cadence during private development until the v1.0.0 Registry publication milestone.
+Delivery milestones represent human-scoped goals and functional capability themes decoupled from strict SemVer patch increments.
 
 ## Completed milestones
 
-- **v0.0.1**: [service contract](specs/goalert-service.md), merged through
+- **Service Contract**: [service contract](specs/goalert-service.md), merged through
   [PR #1](https://github.com/healdropper/terraform-provider-goalert/pull/1) on
-  2026-09-21.
-- **v0.0.2**: [routing increment](milestones/v0.0.2.md), merged through
+  2026-09-21. Resources: `goalert_service`.
+- **Escalation Policies and Webhook Routing**: [routing increment](milestones/v0.0.2.md), merged through
   [PR #17](https://github.com/healdropper/terraform-provider-goalert/pull/17) on
-  2026-09-22. Successfully deployed and adopted in production cluster `downstream-consumer`.
-- **v0.0.3**: [ingress and integration keys](milestones/v0.0.3.md), merged through
+  2026-09-22. Resources: `goalert_escalation_policy` (with webhook step target). Successfully deployed and adopted in production cluster `downstream-consumer`.
+- **Ingress and Integration Keys**: [ingress and integration keys](milestones/v0.0.3.md), merged through
   [PR #30](https://github.com/healdropper/terraform-provider-goalert/pull/30) on
   2026-09-26. Resources: `goalert_integration_key`. Closed on GitHub.
-- **v0.0.4**: [heartbeats, labels and data sources](milestones/v0.0.4.md), merged through
+- **Heartbeat Monitors and Service Labels**: [heartbeats, labels and data sources](milestones/v0.0.4.md), merged through
   [PR #36](https://github.com/healdropper/terraform-provider-goalert/pull/36) on
   2026-09-27. Resources: `goalert_heartbeat_monitor`, `goalert_service_label`.
   Data sources: `goalert_service`, `goalert_escalation_policy`, `goalert_integration_key`, `goalert_heartbeat_monitor`.
   Closed on GitHub.
-- **v0.0.5**: [human identity, contact methods, and notification rules](milestones/v0.0.5.md), implemented on 2026-09-27.
+- **User Identity and Notification Rules**: [human identity, contact methods, and notification rules](milestones/v0.0.5.md), merged through
+  [PR #42](https://github.com/healdropper/terraform-provider-goalert/pull/42) on 2026-09-27.
   Resources: `goalert_user`, `goalert_user_contact_method`, `goalert_user_notification_rule`.
-  Data sources: `goalert_user`. Ready for merge.
+  Data sources: `goalert_user`. Closed on GitHub.
 
 ## Active milestone
 
-- **v0.0.6**: [on-call shift rotations and escalation targets](milestones/v0.0.6-preview.md).
-  - Scope: `goalert_rotation` resource, data source, and expanding `goalert_escalation_policy` steps to target users and rotations.
+- **Rotations and Escalation Targets**: [on-call shift rotations and escalation targets](milestones/rotations-and-escalation-targets.md).
+  - Scope: `goalert_rotation` resource, `data.goalert_rotation` data source, and expanding `goalert_escalation_policy` steps to target users and rotations.
+  - Tracking: [GitHub Milestone 6](https://github.com/healdropper/terraform-provider-goalert/milestone/6).
 
 ## Planned milestones (full API coverage & Registry launch)
 
-- **v0.0.6**: [on-call shift rotations and escalation targets](milestones/v0.0.6-preview.md).
-  - Scope: `goalert_rotation` resource, data source, and expanding `goalert_escalation_policy` steps to target users and rotations.
-- **v0.0.7**: [schedules, shifts, targets, and user overrides](milestones/v0.0.7-preview.md).
+- **Schedules and User Overrides**:
   - Scope: `goalert_schedule`, `goalert_schedule_rule`, `goalert_user_override`, `goalert_schedule_on_call_notification_rule`, and schedule data source.
-- **v0.0.8**: [collaboration channels and system limits](milestones/v0.0.8-preview.md).
-  - Scope: Slack channel/user group data sources and `goalert_system_limit` resource.
-- **v1.0.0**: [Terraform Registry publication and GA release](milestones/v1.0.0-preview.md).
+- **Collaboration Channels and System Limits**:
+  - Scope: Slack/chat channel/user group data sources and `goalert_system_limit` resource.
+- **Registry Publication and GA**:
   - Scope: `tfplugindocs` pipeline integration, GPG signing identity setup, public repository transition, registry publication, and production consumer adoption.
 
 ## Backlog
@@ -47,13 +47,9 @@ Preserve the v0.0.x cadence during private development until the v1.0.0 Registry
 | Item | Track / state | Owner | Scheduling / dependency |
 | --- | --- | --- | --- |
 | Review observed contracts and adoption gaps | Process transition, in review | healdropper | Baseline before normal feature delivery |
-| Upstream GoAlert v0.35.0 compatibility | Maintenance, Ready | healdropper | Assigned to v0.0.4 (#22) |
-| Heartbeat monitor lifecycle & dead-man switch | C, In planning | healdropper | Assigned to v0.0.4 (#18, #32, #33, #34) |
-| User identity, contact methods, notification rules | C, Backlog | healdropper | Scheduled for v0.0.5 |
-| Schedules, rotations and notification methods | C, Backlog | healdropper | Scheduled for v0.0.6 (#19) and v0.0.7 |
 | External chat adapter and real source-to-chat demonstration | C, Proposed; consumer-owned delivery | healdropper | Outside provider runtime (#11) |
 | Independent Grafana availability | C, Backlog | healdropper | [Availability RFC](specs/grafana-availability.md) (#10) |
-| Public visibility / Registry / production adoption | Three separate decisions | healdropper | Scheduled for v1.0.0; [Existing gates](releases.md#three-independent-decisions) |
+| Public visibility / Registry / production adoption | Three separate decisions | healdropper | Scheduled for Registry Publication milestone; [Existing gates](releases.md#three-independent-decisions) |
 
 ## Delivery tracking
 
@@ -62,7 +58,7 @@ Board layout with Status columns.
 Additional views track active milestones and unassigned Backlog issues.
 Item closed and Pull request merged workflows report enabled.
 
-[Milestone v0.0.4](https://github.com/healdropper/terraform-provider-goalert/milestone/4)
+[Milestone: Rotations and Escalation Targets](https://github.com/healdropper/terraform-provider-goalert/milestone/6)
 is the active delivery planning container.
-Its [canonical record](milestones/v0.0.4.md) links readiness and dependencies across
-V004-UPSTREAM, V004-DISC, V004-SPEC, V004-IMPL, and V004-VERIFY gates.
+Its canonical record links readiness and dependencies across
+DISC, SPEC, IMPL, and VERIFY gates.
