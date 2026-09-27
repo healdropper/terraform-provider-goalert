@@ -1,5 +1,23 @@
 # Development log
 
+## 2026-09-27 — Full API coverage roadmap and milestone v0.0.4 planning (Issues #18, #22, #32, #33, #34)
+
+- Conducted exhaustive mapping of GoAlert upstream GraphQL schema (`target/goalert`) to Terraform provider resources and data sources.
+- Established phased SpecDD roadmap from v0.0.4 through v1.0.0 (Registry publication):
+  - v0.0.4: Heartbeat monitors, service labels, foundational data sources (`service`, `escalation_policy`, `integration_key`, `heartbeat_monitor`), and GoAlert v0.35.0 compatibility.
+  - v0.0.5: User identity, contact methods, and individual notification rules.
+  - v0.0.6: On-call shift rotations and escalation policy target expansion (users and rotations).
+  - v0.0.7: Schedules, rules, shifts, overrides, and channel on-call notifications.
+  - v0.0.8: Collaboration integrations (Slack channels/groups) and system limits.
+  - v1.0.0: Public Terraform Registry launch (`tfplugindocs`, GPG signing, public repository transition, GA release).
+- Created GitHub Milestone 4 (`v0.0.4`) and linked issues:
+  - Issue #22: Upstream GoAlert v0.35.0 compatibility (Gate V004-UPSTREAM).
+  - Issue #18: Heartbeat monitor lifecycle investigation (Gate V004-DISC).
+  - Issue #32: Heartbeat monitor, service label, and data source contract specification (Gate V004-SPEC).
+  - Issue #33: Heartbeat monitor, service label, and data source implementation (Gate V004-IMPL).
+  - Issue #34: Lifecycle verification and acceptance testing (Gate V004-VERIFY).
+- Updated canonical documents: `docs/roadmap.md`, `docs/milestones/v0.0.4.md`, and `docs/sprints/sprint-3.md`.
+
 ## 2026-09-26 — Integration key implementation and verification (Issues #25 & #26, Gates V003-IMPL & V003-VERIFY)
 
 - Implemented `goalert_integration_key` resource using Terraform Plugin Framework (`internal/provider/integration_key_resource.go`).
