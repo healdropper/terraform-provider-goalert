@@ -20,8 +20,7 @@ DOCUMENT = ROOT / "internal/client/operations.graphql"
 def run(args, *, env=None, cwd=ROOT, accepted=(0,)):
     result = subprocess.run(args, cwd=cwd, env=env, text=True, capture_output=True)
     if result.returncode not in accepted:
-        # Never print arguments/environment: bootstrap credentials can be present.
-        raise RuntimeError(f"{Path(args[0]).name} failed (exit {result.returncode}): {result.stderr[-2500:]}")
+        raise RuntimeError(f"{Path(args[0]).name} failed (exit {result.returncode}):\nSTDERR:\n{result.stderr[-2500:]}\nSTDOUT:\n{result.stdout[-2500:]}")
     return result
 
 def wait_for_health(url, timeout=120):

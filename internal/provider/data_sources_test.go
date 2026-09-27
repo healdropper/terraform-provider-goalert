@@ -97,4 +97,26 @@ func TestDataSourcesMetadataAndSchema(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("user data source", func(t *testing.T) {
+		d := NewUserDataSource()
+		mReq := datasource.MetadataRequest{ProviderTypeName: "goalert"}
+		mResp := datasource.MetadataResponse{}
+		d.Metadata(ctx, mReq, &mResp)
+		if mResp.TypeName != "goalert_user" {
+			t.Fatalf("expected goalert_user, got %s", mResp.TypeName)
+		}
+
+		sReq := datasource.SchemaRequest{}
+		sResp := datasource.SchemaResponse{}
+		d.Schema(ctx, sReq, &sResp)
+		if sResp.Diagnostics.HasError() {
+			t.Fatalf("unexpected schema diagnostics: %v", sResp.Diagnostics)
+		}
+		for _, attr := range []string{"id", "name", "email", "role"} {
+			if _, ok := sResp.Schema.Attributes[attr]; !ok {
+				t.Fatalf("missing attribute: %s", attr)
+			}
+		}
+	})
 }
