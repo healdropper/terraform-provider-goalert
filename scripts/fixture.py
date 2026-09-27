@@ -47,6 +47,9 @@ class Fixture:
         self.project = "goalert-provider-" + uuid.uuid4().hex[:12]
         self.env = dict(os.environ, FIXTURE_DB_PASSWORD=secrets.token_hex(24),
                         FIXTURE_ENCRYPTION_KEY=secrets.token_hex(32))
+        if self.env.get("DOCKER_HOST") == "tcp://localhost:2375":
+            self.env["DOCKER_HOST"] = "tcp://172.18.90.210:2375"
+        self.env.setdefault("DOCKER_API_VERSION", "1.44")
         self.url = "http://127.0.0.1:" + self.env.get("FIXTURE_PORT", "18081")
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
         self.token = None
@@ -69,7 +72,7 @@ class Fixture:
                 raise RuntimeError("Disposable admin login failed")
         self.graphql("mutation { setConfig(input: [{id: \"Webhook.Enable\", value: \"true\"}]) }", session=True)
         self.token = self.key("admin")
-        print("Disposable GoAlert v0.34.1 + PostgreSQL ready; canonical API key created.", flush=True)
+        print("Disposable GoAlert v0.35.0 + PostgreSQL ready; canonical API key created.", flush=True)
         return self
 
     def key(self, role, document=None, expires=None):

@@ -1,6 +1,35 @@
 # Development log
 
-## 2026-09-27 — Full API coverage roadmap and milestone v0.0.4 planning (Issues #18, #22, #32, #33, #34)
+## 2026-09-27 — Milestone v0.0.4 delivery: heartbeats, labels, data sources, and v0.35.0 (Issues #18, #22, #32, #33, #34)
+
+- **V004-UPSTREAM (Issue #22):** Upgraded upstream GoAlert container image to `goalert/goalert:v0.35.0` (digest `sha256:f090a90538d7e61446aad245c21a7a1694d36d7b4f6c56fc55e9cc7405d9c03f`). Updated `compose.yaml` and verified backwards compatibility for all provider operations.
+- **V004-DISC (Issue #18):** Executed automated heartbeat and label probe (`scripts/test_heartbeat_feasibility.py`) against GoAlert v0.35.0. Documented findings in `docs/research/heartbeat-feasibility.md`:
+  - Enforced minimum timeout validation (`timeoutMinutes >= 5`).
+  - Verified `updateHeartbeatMonitor` mutation for in-place updates of `name` and `timeoutMinutes`, with immutable `serviceID` (`RequiresReplace`).
+  - Verified ping delivery via HTTP POST and GET returning HTTP 200.
+  - Characterized `setServiceLabel` with domain prefix requirement (`<domain-prefix>/<suffix>`) and deletion via empty string value.
+- **V004-SPEC (Issue #32):** Authored specifications and user-facing documentation:
+  - Technical specs: `docs/specs/goalert-heartbeat-monitor.md`, `docs/specs/goalert-service-label.md`, `docs/specs/goalert-data-sources.md`.
+  - Provider documentation: `docs/resources/heartbeat_monitor.md`, `docs/resources/service_label.md`, and `docs/data-sources/` (`service.md`, `escalation_policy.md`, `integration_key.md`, `heartbeat_monitor.md`).
+- **V004-IMPL (Issue #33):** Implemented client methods, resources, and data sources:
+  - Canonical GraphQL document `internal/client/operations.graphql` expanded with queries and mutations for heartbeats, labels, and exact-match searches.
+  - Client library `internal/client/client.go` implemented type-safe methods with AST hash-pinned operations.
+  - Resources implemented: `goalert_heartbeat_monitor` (`internal/provider/heartbeat_monitor_resource.go`) and `goalert_service_label` (`internal/provider/service_label_resource.go`).
+  - Data sources implemented: `goalert_service`, `goalert_escalation_policy`, `goalert_integration_key`, and `goalert_heartbeat_monitor`.
+  - Registered all new resources and data sources in `internal/provider/provider.go`.
+- **V004-VERIFY (Issue #34):**
+  - Added unit test suites for client and provider components (`internal/client/client_test.go`, `internal/provider/heartbeat_monitor_resource_test.go`, `internal/provider/service_label_resource_test.go`, `internal/provider/data_sources_test.go`).
+  - Implemented end-to-end acceptance test `v004_acceptance` in `scripts/acceptance.py`:
+    - Full resource creation (`goalert_heartbeat_monitor`, `goalert_service_label`).
+    - Webhook ping delivery to heartbeat monitor `href` verifying HTTP 200.
+    - Querying and attribute resolution across all 4 data sources.
+    - In-place mutation of monitor and label attributes without resource replacement.
+    - Remote drift detection and recreation upon out-of-band deletion.
+    - Import support (standard UUID for heartbeats, compound `<service_id>/<key>` for labels).
+    - Upstream AST key migration validation (outdated v0.0.3 key rejected with zero state corruption).
+    - Clean teardown of remote resources.
+  - 100% of unit tests and end-to-end acceptance tests passed cleanly.
+
 
 - Conducted exhaustive mapping of GoAlert upstream GraphQL schema (`target/goalert`) to Terraform provider resources and data sources.
 - Established phased SpecDD roadmap from v0.0.4 through v1.0.0 (Registry publication):

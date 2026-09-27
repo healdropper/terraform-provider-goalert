@@ -61,12 +61,22 @@ func (p *goalertProvider) Configure(ctx context.Context, req provider.ConfigureR
 		return
 	}
 	resp.ResourceData = c
+	resp.DataSourceData = c
 }
 func (p *goalertProvider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewServiceResource,
 		NewEscalationPolicyResource,
 		NewIntegrationKeyResource,
+		NewHeartbeatMonitorResource,
+		NewServiceLabelResource,
 	}
 }
-func (p *goalertProvider) DataSources(context.Context) []func() datasource.DataSource { return nil }
+func (p *goalertProvider) DataSources(context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{
+		NewServiceDataSource,
+		NewEscalationPolicyDataSource,
+		NewIntegrationKeyDataSource,
+		NewHeartbeatMonitorDataSource,
+	}
+}
