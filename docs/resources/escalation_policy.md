@@ -15,6 +15,8 @@ resource "goalert_escalation_policy" "production" {
 
   step {
     delay_minutes = 5
+    user_ids      = [goalert_user.sre1.id]
+    rotation_ids  = [goalert_rotation.primary.id]
     webhook_action {
       url = "https://events.example.com/alerts"
     }
@@ -22,9 +24,7 @@ resource "goalert_escalation_policy" "production" {
 
   step {
     delay_minutes = 10
-    webhook_action {
-      url = "https://events.example.com/secondary"
-    }
+    rotation_ids  = [goalert_rotation.secondary.id]
   }
 }
 ```
@@ -39,7 +39,9 @@ resource "goalert_escalation_policy" "production" {
 | `step.id` | String, Computed | Unique UUID of the escalation step. |
 | `step.step_number` | Int64, Computed | 0-indexed position of the step in the escalation sequence. |
 | `step.delay_minutes` | Int64, Required | Delay in minutes before escalating to the next step. Minimum `1`. |
-| `step.webhook_action` | Block (List) | Webhook notification target for the step. |
+| `step.user_ids` | List(String), Optional | List of operator user UUIDs targeted in this step. |
+| `step.rotation_ids` | List(String), Optional | List of rotation UUIDs targeted in this step. |
+| `step.webhook_action` | Block (List), Optional | Webhook notification target for the step. |
 | `step.webhook_action.url` | String, Required | Webhook endpoint URL. Must include scheme `http://` or `https://`. |
 
 ## Behavior and Lifecycle
