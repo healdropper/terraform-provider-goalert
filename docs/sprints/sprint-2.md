@@ -1,7 +1,7 @@
 # Sprint 2: ingress and integration keys
 
 Owner: healdropper. Recorded: 2026-09-26.
-Status: Completed delivery sprint. [Milestone v0.0.3](../milestones/v0.0.3.md) is closed;
+Status: Completed delivery sprint. [Milestone Ingress and Integration Keys](../milestones/ingress-and-integration-keys.md) is closed;
 [private board](https://github.com/users/healdropper/projects/1) tracks delivery.
 
 ## Goal and user story

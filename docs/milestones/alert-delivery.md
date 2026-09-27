@@ -6,7 +6,7 @@ Track C intake: analyze Grafana -> GoAlert -> Telegram delivery.
 Authority: [proposed outcomes AD-01 through AD-08](../specs/alert-delivery.md).
 Evidence and uncertainty: [source review](../research/alert-delivery-feasibility.md).
 The original brainstorm remains evidence of alternatives. Subsequent owner
-direction and GitHub tracking are recorded in [v0.0.2](v0.0.2.md); no release
+direction and GitHub tracking are recorded in [Escalation Policies and Webhook Routing](escalation-policies-and-webhook-routing.md); no release
 is created by either planning document.
 
 ## Milestone cards
@@ -83,7 +83,7 @@ adoption remain three independent decisions.
 ## Owner decision worksheet
 
 Recorded answers: Grafana firing first; small increments; group preferred with
-private visibility possible; outage detection later. See [v0.0.2](v0.0.2.md).
+private visibility possible; outage detection later. See [Escalation Policies and Webhook Routing](escalation-policies-and-webhook-routing.md).
 The remaining questions below are not answered by implication:
 1. First failure to demonstrate: synthetic workload condition, Grafana outage,
    or an ordered pair of separate scenarios?

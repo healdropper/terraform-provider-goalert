@@ -56,7 +56,7 @@
   - Issue #32: Heartbeat monitor, service label, and data source contract specification (Gate V004-SPEC).
   - Issue #33: Heartbeat monitor, service label, and data source implementation (Gate V004-IMPL).
   - Issue #34: Lifecycle verification and acceptance testing (Gate V004-VERIFY).
-- Updated canonical documents: `docs/roadmap.md`, `docs/milestones/v0.0.4.md`, and `docs/sprints/sprint-3.md`.
+- Updated canonical documents: `docs/roadmap.md`, `docs/milestones/heartbeat-monitors-and-service-labels.md`, and `docs/sprints/sprint-3.md`.
 
 ## 2026-09-26 — Integration key implementation and verification (Issues #25 & #26, Gates V003-IMPL & V003-VERIFY)
 
@@ -101,7 +101,7 @@
   - Configured GoAlert API key with canonical operations GraphQL document and `Webhook.Enable: true`.
   - Automated deployment applied `goalert_escalation_policy.watch_critical` and both `goalert_service` resources without drift.
   - End-to-end integration verified: Grafana, Prometheus, GoAlert and Alertmanager reporting healthy.
-- Updated `docs/milestones/v0.0.2.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
+- Updated `docs/milestones/escalation-policies-and-webhook-routing.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
 
 ## 2026-09-25 — Upstream version watcher workflow (#20)
 
@@ -190,7 +190,7 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Recorded the owner's first Grafana firing scenario, group preference and
   interest in later independent availability detection in the
   [capability proposal](docs/specs/alert-delivery.md). No group or bot was created.
-- Created [v0.0.2 planning](docs/milestones/v0.0.2.md), linked issues #4-#8 and
+- Created [v0.0.2 planning](docs/milestones/escalation-policies-and-webhook-routing.md), linked issues #4-#8 and
   updated [Sprint 1](docs/sprints/sprint-1.md). Detailed behavior and normal
   implementation remain pending discovery and owner acceptance.
 - Created a [private Project](https://github.com/users/healdropper/projects/1),
@@ -234,7 +234,7 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Reconciled release-management: confirmed workflow_dispatch deployment (PR #13 / issue #12);
   explicitly recorded that maintained signing identity remains scheduled before public release.
 - Maintained linkage to audit issue #2 while keeping the baseline milestone open pending review.
-- Updated `docs/milestones/v0.0.2.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
+- Updated `docs/milestones/escalation-policies-and-webhook-routing.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
 - Delivery tracking: resolves [issue #4](https://github.com/healdropper/terraform-provider-goalert/issues/4),
   unblocking V002-DISC (issue #5).
 - Doctrine assessment: follows organization-neutral SpecDD lifecycle and Foundry governance.
@@ -250,7 +250,7 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   - Proved referential integrity: policy deletion is rejected while attached to a managed service.
   - Proved validation constraints: `delayMinutes >= 1`, `repeat >= 0`, `webhook_url` requires URI scheme.
   - Proved multi-operation canonical GraphQL document with AST hash preservation and backwards compatibility with service operations.
-- Updated `docs/research/alert-delivery-feasibility.md`, `docs/milestones/v0.0.2.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
+- Updated `docs/research/alert-delivery-feasibility.md`, `docs/milestones/escalation-policies-and-webhook-routing.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
 - Delivery tracking: resolves [issue #5](https://github.com/healdropper/terraform-provider-goalert/issues/5), unblocking V002-SPEC (issue #6).
 - Doctrine assessment: conforms to organization-neutral SpecDD lifecycle and Foundry governance.
 - Verification: live test script `scripts/test_feasibility.py` passed with 100% empirical assertions; `git diff --check`, `python scripts/check_format.py`, `go vet ./...`, and `go test ./...` passed.
@@ -263,7 +263,7 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   - Specified `delay_minutes` (>= 1), `step_number` (0-indexed, computed), and `webhook_action` with required `url`.
   - Specified step ownership and reconciliation lifecycle: atomic creation via `createEscalationPolicy`, step modification via `updateEscalationPolicyStep`, new step addition via `createEscalationPolicyStep`, and reordering/pruning via `updateEscalationPolicy(stepIDs: [...])`.
   - Documented deletion cascade via `deleteAll`, referential integrity enforcement when referenced by a service, and key migration requirements for GraphQL AST hash validation.
-- Updated `docs/milestones/v0.0.2.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
+- Updated `docs/milestones/escalation-policies-and-webhook-routing.md`, `docs/sprints/sprint-1.md`, and `docs/roadmap.md`.
 - Delivery tracking: resolves [issue #6](https://github.com/healdropper/terraform-provider-goalert/issues/6), unblocking V002-IMPL (issue #7) and V002-VERIFY (issue #8).
 - Doctrine assessment: conforms to organization-neutral SpecDD lifecycle and Foundry governance.
 - Verification: `git diff --check`, `python scripts/check_format.py`, `go vet ./...`, and `go test ./...` passed.

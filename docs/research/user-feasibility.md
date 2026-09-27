@@ -1,7 +1,7 @@
 # User, contact method, and notification rule API feasibility
 
 Recorded: 2026-09-27.
-Authority: [Milestone v0.0.5](../milestones/v0.0.5.md), Gate V005-DISC, [Issue #38](https://github.com/healdropper/terraform-provider-goalert/issues/38).
+Authority: [Milestone User Identity and Notification Rules](../milestones/user-identity-and-notification-rules.md), Gate V005-DISC, [Issue #38](https://github.com/healdropper/terraform-provider-goalert/issues/38).
 Upstream version probed: GoAlert v0.35.0 (`sha256:f090a90538d7e61446aad245c21a7a1694d36d7b4f6c56fc55e9cc7405d9c03f`).
 
 ## Executive summary

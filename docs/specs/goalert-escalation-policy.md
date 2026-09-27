@@ -4,7 +4,7 @@ Owner: healdropper.
 Status: Accepted specification for v0.0.2 under V002-SPEC.
 Recorded: 2026-09-22.
 Related: [Issue #6](https://github.com/healdropper/terraform-provider-goalert/issues/6),
-[Milestone v0.0.2](../milestones/v0.0.2.md),
+[Milestone Escalation Policies and Webhook Routing](../milestones/escalation-policies-and-webhook-routing.md),
 [Feasibility research](../research/alert-delivery-feasibility.md).
 
 ## Requirements and scope

@@ -4,7 +4,7 @@ Owner: healdropper. Completed: 2026-09-26.
 Status: Completed and closed. All scoped delivery gates (V002-FOUNDATION,
 V002-DISC, V002-SPEC, V002-IMPL, V002-VERIFY) verified. Production adoption
 completed in `downstream-consumer/deployment` via deploy workflow run #36226368007.
-[Milestone v0.0.2](../milestones/v0.0.2.md) is the scope/criteria authority;
+[Milestone Escalation Policies and Webhook Routing](../milestones/escalation-policies-and-webhook-routing.md) is the scope/criteria authority;
 [private board](https://github.com/users/healdropper/projects/1) tracks delivery.
 
 ## Goal and user story
