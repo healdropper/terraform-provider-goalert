@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -40,6 +41,8 @@ type stepModel struct {
 	ID             types.String         `tfsdk:"id"`
 	StepNumber     types.Int64          `tfsdk:"step_number"`
 	DelayMinutes   types.Int64          `tfsdk:"delay_minutes"`
+	UserIDs        []types.String       `tfsdk:"user_ids"`
+	RotationIDs    []types.String       `tfsdk:"rotation_ids"`
 	WebhookActions []webhookActionModel `tfsdk:"webhook_action"`
 }
 
@@ -109,6 +112,16 @@ func (r *escalationPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 							Required:            true,
 							MarkdownDescription: "Delay in minutes before escalating to the next step. Must be at least 1.",
 							Validators:          []validator.Int64{int64validator.AtLeast(1)},
+						},
+						"user_ids": schema.ListAttribute{
+							ElementType:         types.StringType,
+							Optional:            true,
+							MarkdownDescription: "List of user IDs to target in this escalation step.",
+						},
+						"rotation_ids": schema.ListAttribute{
+							ElementType:         types.StringType,
+							Optional:            true,
+							MarkdownDescription: "List of rotation IDs to target in this escalation step.",
 						},
 					},
 					Blocks: map[string]schema.Block{
@@ -182,12 +195,26 @@ func modelFromEscalationPolicy(ep *client.EscalationPolicy, prior *escalationPol
 		}
 
 		var webhookActions []webhookActionModel
+		var userIDs []types.String
+		var rotationIDs []types.String
 		for _, action := range step.Actions {
-			if action.Type == "builtin-webhook" {
+			switch action.Type {
+			case "builtin-webhook":
 				urlVal := action.Args["webhook_url"]
+				if urlVal == "" {
+					urlVal = action.Args["url"]
+				}
 				webhookActions = append(webhookActions, webhookActionModel{
 					URL: types.StringValue(urlVal),
 				})
+			case "builtin-user":
+				if uid, ok := action.Args["user_id"]; ok && uid != "" {
+					userIDs = append(userIDs, types.StringValue(uid))
+				}
+			case "builtin-rotation":
+				if rid, ok := action.Args["rotation_id"]; ok && rid != "" {
+					rotationIDs = append(rotationIDs, types.StringValue(rid))
+				}
 			}
 		}
 
@@ -199,6 +226,26 @@ func modelFromEscalationPolicy(ep *client.EscalationPolicy, prior *escalationPol
 			}
 		} else {
 			sm.WebhookActions = webhookActions
+		}
+
+		if len(userIDs) == 0 {
+			if priorStep != nil && priorStep.UserIDs != nil && len(priorStep.UserIDs) == 0 {
+				sm.UserIDs = []types.String{}
+			} else {
+				sm.UserIDs = nil
+			}
+		} else {
+			sm.UserIDs = userIDs
+		}
+
+		if len(rotationIDs) == 0 {
+			if priorStep != nil && priorStep.RotationIDs != nil && len(priorStep.RotationIDs) == 0 {
+				sm.RotationIDs = []types.String{}
+			} else {
+				sm.RotationIDs = nil
+			}
+		} else {
+			sm.RotationIDs = rotationIDs
 		}
 
 		m.Steps[i] = sm
@@ -231,6 +278,10 @@ func (r *escalationPolicyResource) Create(ctx context.Context, req resource.Crea
 	if len(plan.Steps) > 0 {
 		input.Steps = make([]client.CreateEscalationPolicyStepInput, len(plan.Steps))
 		for i, s := range plan.Steps {
+			if len(s.WebhookActions) == 0 && len(s.UserIDs) == 0 && len(s.RotationIDs) == 0 {
+				resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf("step %d must specify at least one target (user_ids, rotation_ids) or webhook_action", i))
+				return
+			}
 			stepInput := client.CreateEscalationPolicyStepInput{
 				DelayMinutes: s.DelayMinutes.ValueInt64(),
 			}
@@ -245,6 +296,20 @@ func (r *escalationPolicyResource) Create(ctx context.Context, req resource.Crea
 					}
 				}
 			}
+			var targets []client.TargetInput
+			for _, uid := range s.UserIDs {
+				targets = append(targets, client.TargetInput{
+					ID:   uid.ValueString(),
+					Type: "user",
+				})
+			}
+			for _, rid := range s.RotationIDs {
+				targets = append(targets, client.TargetInput{
+					ID:   rid.ValueString(),
+					Type: "rotation",
+				})
+			}
+			stepInput.Targets = targets
 			input.Steps[i] = stepInput
 		}
 	}
@@ -282,7 +347,11 @@ func actionsMatch(serverActions []client.Destination, planActions []webhookActio
 	var serverWebhooks []string
 	for _, a := range serverActions {
 		if a.Type == "builtin-webhook" {
-			serverWebhooks = append(serverWebhooks, a.Args["webhook_url"])
+			u := a.Args["webhook_url"]
+			if u == "" {
+				u = a.Args["url"]
+			}
+			serverWebhooks = append(serverWebhooks, u)
 		}
 	}
 	if len(serverWebhooks) != len(planActions) {
@@ -293,6 +362,49 @@ func actionsMatch(serverActions []client.Destination, planActions []webhookActio
 			return false
 		}
 	}
+	return true
+}
+
+func stepMatches(serverStep client.EscalationPolicyStep, planStep stepModel) bool {
+	if serverStep.DelayMinutes != planStep.DelayMinutes.ValueInt64() {
+		return false
+	}
+	if !actionsMatch(serverStep.Actions, planStep.WebhookActions) {
+		return false
+	}
+	var serverUsers []string
+	var serverRotations []string
+	for _, a := range serverStep.Actions {
+		switch a.Type {
+		case "builtin-user":
+			if uid, ok := a.Args["user_id"]; ok && uid != "" {
+				serverUsers = append(serverUsers, uid)
+			}
+		case "builtin-rotation":
+			if rid, ok := a.Args["rotation_id"]; ok && rid != "" {
+				serverRotations = append(serverRotations, rid)
+			}
+		}
+	}
+
+	if len(serverUsers) != len(planStep.UserIDs) {
+		return false
+	}
+	for i := range planStep.UserIDs {
+		if serverUsers[i] != planStep.UserIDs[i].ValueString() {
+			return false
+		}
+	}
+
+	if len(serverRotations) != len(planStep.RotationIDs) {
+		return false
+	}
+	for i := range planStep.RotationIDs {
+		if serverRotations[i] != planStep.RotationIDs[i].ValueString() {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -319,7 +431,12 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	var stepIDs []string
-	for _, pStep := range plan.Steps {
+	for i, pStep := range plan.Steps {
+		if len(pStep.WebhookActions) == 0 && len(pStep.UserIDs) == 0 && len(pStep.RotationIDs) == 0 {
+			resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf("step %d must specify at least one target (user_ids, rotation_ids) or webhook_action", i))
+			return
+		}
+
 		var actions []client.DestinationInput
 		for _, act := range pStep.WebhookActions {
 			actions = append(actions, client.DestinationInput{
@@ -327,6 +444,19 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 				Args: map[string]string{
 					"webhook_url": act.URL.ValueString(),
 				},
+			})
+		}
+		var targets []client.TargetInput
+		for _, uid := range pStep.UserIDs {
+			targets = append(targets, client.TargetInput{
+				ID:   uid.ValueString(),
+				Type: "user",
+			})
+		}
+		for _, rid := range pStep.RotationIDs {
+			targets = append(targets, client.TargetInput{
+				ID:   rid.ValueString(),
+				Type: "rotation",
 			})
 		}
 
@@ -338,10 +468,11 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 		if stepID != "" && serverSteps[stepID].ID != "" {
 			s := serverSteps[stepID]
 			delay := pStep.DelayMinutes.ValueInt64()
-			if s.DelayMinutes != delay || !actionsMatch(s.Actions, pStep.WebhookActions) {
+			if !stepMatches(s, pStep) {
 				updateStepErr := r.client.UpdateEscalationPolicyStep(ctx, client.UpdateEscalationPolicyStepInput{
 					ID:           stepID,
 					DelayMinutes: &delay,
+					Targets:      targets,
 					Actions:      actions,
 				})
 				if updateStepErr != nil {
@@ -354,6 +485,7 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 			createdStep, createStepErr := r.client.CreateEscalationPolicyStep(ctx, client.CreateEscalationPolicyStepInput{
 				EscalationPolicyID: &policyID,
 				DelayMinutes:       pStep.DelayMinutes.ValueInt64(),
+				Targets:            targets,
 				Actions:            actions,
 			})
 			if createStepErr != nil {

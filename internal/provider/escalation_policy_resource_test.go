@@ -140,3 +140,80 @@ func TestActionsMatch(t *testing.T) {
 		t.Error("expected diffCountPlan to not match")
 	}
 }
+
+func TestStepMatchesWithTargets(t *testing.T) {
+	serverStep := client.EscalationPolicyStep{
+		ID:           "step-1",
+		DelayMinutes: 15,
+		Actions: []client.Destination{
+			{Type: "builtin-user", Args: map[string]string{"user_id": "u1"}},
+			{Type: "builtin-rotation", Args: map[string]string{"rotation_id": "r1"}},
+			{Type: "builtin-webhook", Args: map[string]string{"webhook_url": "https://example.com/alert"}},
+		},
+	}
+
+	matchingPlan := stepModel{
+		DelayMinutes: types.Int64Value(15),
+		UserIDs:      []types.String{types.StringValue("u1")},
+		RotationIDs:  []types.String{types.StringValue("r1")},
+		WebhookActions: []webhookActionModel{
+			{URL: types.StringValue("https://example.com/alert")},
+		},
+	}
+
+	diffDelayPlan := matchingPlan
+	diffDelayPlan.DelayMinutes = types.Int64Value(20)
+
+	diffUserPlan := matchingPlan
+	diffUserPlan.UserIDs = []types.String{types.StringValue("u2")}
+
+	diffRotationPlan := matchingPlan
+	diffRotationPlan.RotationIDs = []types.String{types.StringValue("r2")}
+
+	if !stepMatches(serverStep, matchingPlan) {
+		t.Error("expected matchingPlan to match step")
+	}
+	if stepMatches(serverStep, diffDelayPlan) {
+		t.Error("expected diffDelayPlan to not match")
+	}
+	if stepMatches(serverStep, diffUserPlan) {
+		t.Error("expected diffUserPlan to not match")
+	}
+	if stepMatches(serverStep, diffRotationPlan) {
+		t.Error("expected diffRotationPlan to not match")
+	}
+}
+
+func TestModelFromEscalationPolicyTargets(t *testing.T) {
+	ep := &client.EscalationPolicy{
+		ID:   "ep-1",
+		Name: "Tier 1",
+		Steps: []client.EscalationPolicyStep{
+			{
+				ID:           "s-1",
+				StepNumber:   0,
+				DelayMinutes: 15,
+				Actions: []client.Destination{
+					{Type: "builtin-user", Args: map[string]string{"user_id": "user-uuid-1"}},
+					{Type: "builtin-rotation", Args: map[string]string{"rotation_id": "rotation-uuid-1"}},
+					{Type: "builtin-webhook", Args: map[string]string{"webhook_url": "https://example.com"}},
+				},
+			},
+		},
+	}
+
+	m := modelFromEscalationPolicy(ep, nil)
+	if len(m.Steps) != 1 {
+		t.Fatalf("expected 1 step, got %d", len(m.Steps))
+	}
+	s := m.Steps[0]
+	if len(s.UserIDs) != 1 || s.UserIDs[0].ValueString() != "user-uuid-1" {
+		t.Errorf("expected user-uuid-1, got: %v", s.UserIDs)
+	}
+	if len(s.RotationIDs) != 1 || s.RotationIDs[0].ValueString() != "rotation-uuid-1" {
+		t.Errorf("expected rotation-uuid-1, got: %v", s.RotationIDs)
+	}
+	if len(s.WebhookActions) != 1 || s.WebhookActions[0].URL.ValueString() != "https://example.com" {
+		t.Errorf("expected webhook action, got: %v", s.WebhookActions)
+	}
+}
