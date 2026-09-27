@@ -227,3 +227,50 @@ mutation ProviderCreateUserNotificationRule($input: CreateUserNotificationRuleIn
 mutation ProviderDeleteUserNotificationRule($id: ID!) {
   deleteAll(input: [{type: notificationRule, id: $id}])
 }
+query ProviderReadRotation($id: ID!) {
+  rotation(id: $id) {
+    id
+    name
+    description
+    type
+    start
+    timeZone
+    shiftLength
+    userIDs
+    activeUserIndex
+  }
+}
+query ProviderSearchRotations($search: String!) {
+  rotations(search: $search, first: 50) {
+    nodes {
+      id
+      name
+      description
+      type
+      start
+      timeZone
+      shiftLength
+      userIDs
+      activeUserIndex
+    }
+  }
+}
+mutation ProviderCreateRotation($input: CreateRotationInput!) {
+  createRotation(input: $input) {
+    id
+    name
+    description
+    type
+    start
+    timeZone
+    shiftLength
+    userIDs
+    activeUserIndex
+  }
+}
+mutation ProviderUpdateRotation($input: UpdateRotationInput!) {
+  updateRotation(input: $input)
+}
+mutation ProviderDeleteRotation($id: ID!) {
+  deleteAll(input: [{type: rotation, id: $id}])
+}

@@ -70,6 +70,7 @@ type CreateEscalationPolicyInput struct {
 type CreateEscalationPolicyStepInput struct {
 	EscalationPolicyID *string            `json:"escalationPolicyID,omitempty"`
 	DelayMinutes       int64              `json:"delayMinutes"`
+	Targets            []TargetInput      `json:"targets,omitempty"`
 	Actions            []DestinationInput `json:"actions,omitempty"`
 }
 
@@ -84,6 +85,7 @@ type UpdateEscalationPolicyInput struct {
 type UpdateEscalationPolicyStepInput struct {
 	ID           string             `json:"id"`
 	DelayMinutes *int64             `json:"delayMinutes,omitempty"`
+	Targets      []TargetInput      `json:"targets,omitempty"`
 	Actions      []DestinationInput `json:"actions,omitempty"`
 }
 
@@ -893,6 +895,133 @@ func (c *Client) DeleteUserNotificationRule(ctx context.Context, id string) erro
 	}
 	if !result.Success {
 		return errors.New("delete notification rule: unconfirmed deletion")
+	}
+	return nil
+}
+
+type Rotation struct {
+	ID              string   `json:"id"`
+	Name            string   `json:"name"`
+	Description     string   `json:"description"`
+	Type            string   `json:"type"`
+	Start           string   `json:"start"`
+	TimeZone        string   `json:"timeZone"`
+	ShiftLength     int64    `json:"shiftLength"`
+	UserIDs         []string `json:"userIDs"`
+	ActiveUserIndex int64    `json:"activeUserIndex"`
+}
+
+type CreateRotationInput struct {
+	Name        string   `json:"name"`
+	Description *string  `json:"description,omitempty"`
+	Type        string   `json:"type"`
+	Start       string   `json:"start"`
+	TimeZone    string   `json:"timeZone"`
+	ShiftLength *int64   `json:"shiftLength,omitempty"`
+	UserIDs     []string `json:"userIDs"`
+}
+
+type UpdateRotationInput struct {
+	ID          string    `json:"id"`
+	Name        *string   `json:"name,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Type        *string   `json:"type,omitempty"`
+	Start       *string   `json:"start,omitempty"`
+	TimeZone    *string   `json:"timeZone,omitempty"`
+	ShiftLength *int64    `json:"shiftLength,omitempty"`
+	UserIDs     *[]string `json:"userIDs,omitempty"`
+}
+
+func rotationResult(raw json.RawMessage, allowMissing bool) (*Rotation, error) {
+	if bytes.Equal(raw, []byte("null")) && allowMissing {
+		return nil, ErrNotFound
+	}
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, errors.New("missing rotation result")
+	}
+	var rot Rotation
+	if err := json.Unmarshal(raw, &rot); err != nil {
+		return nil, errors.New("malformed rotation result")
+	}
+	if rot.ID == "" || rot.Name == "" {
+		return nil, errors.New("incomplete rotation result")
+	}
+	if rot.UserIDs == nil {
+		rot.UserIDs = []string{}
+	}
+	return &rot, nil
+}
+
+func (c *Client) ReadRotation(ctx context.Context, id string) (*Rotation, error) {
+	var result struct {
+		Rotation json.RawMessage `json:"rotation"`
+	}
+	if err := c.execute(ctx, "ProviderReadRotation", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	rot, err := rotationResult(result.Rotation, true)
+	if err != nil {
+		return nil, fmt.Errorf("read rotation: %w", err)
+	}
+	if rot.ID != id {
+		return nil, errors.New("read rotation: response ID differs from requested ID")
+	}
+	return rot, nil
+}
+
+func (c *Client) SearchRotations(ctx context.Context, search string) ([]Rotation, error) {
+	var result struct {
+		Rotations struct {
+			Nodes []Rotation `json:"nodes"`
+		} `json:"rotations"`
+	}
+	if err := c.execute(ctx, "ProviderSearchRotations", map[string]string{"search": search}, &result); err != nil {
+		return nil, err
+	}
+	for i := range result.Rotations.Nodes {
+		if result.Rotations.Nodes[i].UserIDs == nil {
+			result.Rotations.Nodes[i].UserIDs = []string{}
+		}
+	}
+	return result.Rotations.Nodes, nil
+}
+
+func (c *Client) CreateRotation(ctx context.Context, input CreateRotationInput) (*Rotation, error) {
+	var result struct {
+		Rotation json.RawMessage `json:"createRotation"`
+	}
+	if err := c.execute(ctx, "ProviderCreateRotation", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	rot, err := rotationResult(result.Rotation, false)
+	if err != nil {
+		return nil, fmt.Errorf("create rotation: %w", err)
+	}
+	return rot, nil
+}
+
+func (c *Client) UpdateRotation(ctx context.Context, input UpdateRotationInput) error {
+	var result struct {
+		Success bool `json:"updateRotation"`
+	}
+	if err := c.execute(ctx, "ProviderUpdateRotation", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("update rotation: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) DeleteRotation(ctx context.Context, id string) error {
+	var result struct {
+		Success bool `json:"deleteAll"`
+	}
+	if err := c.execute(ctx, "ProviderDeleteRotation", map[string]string{"id": id}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("delete rotation: API did not confirm success")
 	}
 	return nil
 }
