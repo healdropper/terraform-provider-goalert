@@ -87,3 +87,59 @@ mutation ProviderCreateIntegrationKey($input: CreateIntegrationKeyInput!) {
 mutation ProviderDeleteIntegrationKey($id: ID!) {
   deleteAll(input: [{type: integrationKey, id: $id}])
 }
+query ProviderReadHeartbeatMonitor($id: ID!) {
+  heartbeatMonitor(id: $id) {
+    id
+    serviceID
+    name
+    timeoutMinutes
+    href
+  }
+}
+mutation ProviderCreateHeartbeatMonitor($input: CreateHeartbeatMonitorInput!) {
+  createHeartbeatMonitor(input: $input) {
+    id
+    serviceID
+    name
+    timeoutMinutes
+    href
+  }
+}
+mutation ProviderUpdateHeartbeatMonitor($input: UpdateHeartbeatMonitorInput!) {
+  updateHeartbeatMonitor(input: $input)
+}
+mutation ProviderDeleteHeartbeatMonitor($id: ID!) {
+  deleteAll(input: [{type: heartbeatMonitor, id: $id}])
+}
+mutation ProviderSetServiceLabel($input: SetLabelInput!) {
+  setLabel(input: $input)
+}
+query ProviderReadServiceLabels($id: ID!) {
+  service(id: $id) {
+    id
+    labels {
+      key
+      value
+    }
+  }
+}
+query ProviderSearchServices($search: String!) {
+  services(input: {search: $search, first: 15}) {
+    nodes {
+      id
+      name
+      description
+      escalationPolicy { id }
+    }
+  }
+}
+query ProviderSearchEscalationPolicies($search: String!) {
+  escalationPolicies(input: {search: $search, first: 15}) {
+    nodes {
+      id
+      name
+      description
+      repeat
+    }
+  }
+}

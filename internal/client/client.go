@@ -106,6 +106,42 @@ type CreateIntegrationKeyInput struct {
 	Type      string `json:"type"`
 }
 
+type HeartbeatMonitor struct {
+	ID             string `json:"id"`
+	ServiceID      string `json:"serviceID"`
+	Name           string `json:"name"`
+	TimeoutMinutes int64  `json:"timeoutMinutes"`
+	Href           string `json:"href"`
+}
+
+type CreateHeartbeatMonitorInput struct {
+	ServiceID      string `json:"serviceID"`
+	Name           string `json:"name"`
+	TimeoutMinutes int64  `json:"timeoutMinutes"`
+}
+
+type UpdateHeartbeatMonitorInput struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	TimeoutMinutes int64  `json:"timeoutMinutes"`
+}
+
+type ServiceLabel struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type SetLabelInput struct {
+	Target TargetInput `json:"target"`
+	Key    string      `json:"key"`
+	Value  string      `json:"value"`
+}
+
+type TargetInput struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
+}
+
 func New(endpoint, token string, allowHTTP bool) (*Client, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil || u == nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") ||
@@ -450,4 +486,140 @@ func (c *Client) DeleteIntegrationKey(ctx context.Context, id string) error {
 		return errors.New("delete integration key: API did not confirm success")
 	}
 	return nil
+}
+
+func heartbeatMonitorResult(raw json.RawMessage, allowMissing bool) (*HeartbeatMonitor, error) {
+	if bytes.Equal(raw, []byte("null")) && allowMissing {
+		return nil, ErrNotFound
+	}
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, errors.New("missing heartbeat monitor result")
+	}
+	var hb HeartbeatMonitor
+	if err := json.Unmarshal(raw, &hb); err != nil {
+		return nil, errors.New("malformed heartbeat monitor result")
+	}
+	if hb.ID == "" || hb.Name == "" || hb.Href == "" || hb.ServiceID == "" || hb.TimeoutMinutes <= 0 {
+		return nil, errors.New("incomplete heartbeat monitor result")
+	}
+	return &hb, nil
+}
+
+func (c *Client) ReadHeartbeatMonitor(ctx context.Context, id string) (*HeartbeatMonitor, error) {
+	var result struct {
+		HeartbeatMonitor json.RawMessage `json:"heartbeatMonitor"`
+	}
+	if err := c.execute(ctx, "ProviderReadHeartbeatMonitor", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	hb, err := heartbeatMonitorResult(result.HeartbeatMonitor, true)
+	if err != nil {
+		return nil, fmt.Errorf("read heartbeat monitor: %w", err)
+	}
+	if hb != nil && hb.ID != id {
+		return nil, errors.New("read heartbeat monitor: response ID differs from requested ID")
+	}
+	return hb, nil
+}
+
+func (c *Client) CreateHeartbeatMonitor(ctx context.Context, input CreateHeartbeatMonitorInput) (*HeartbeatMonitor, error) {
+	var result struct {
+		HeartbeatMonitor json.RawMessage `json:"createHeartbeatMonitor"`
+	}
+	if err := c.execute(ctx, "ProviderCreateHeartbeatMonitor", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	hb, err := heartbeatMonitorResult(result.HeartbeatMonitor, false)
+	if err != nil {
+		return nil, fmt.Errorf("create heartbeat monitor: %w", err)
+	}
+	return hb, nil
+}
+
+func (c *Client) UpdateHeartbeatMonitor(ctx context.Context, input UpdateHeartbeatMonitorInput) error {
+	var result struct {
+		Success bool `json:"updateHeartbeatMonitor"`
+	}
+	if err := c.execute(ctx, "ProviderUpdateHeartbeatMonitor", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("update heartbeat monitor: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) DeleteHeartbeatMonitor(ctx context.Context, id string) error {
+	var result struct {
+		Success bool `json:"deleteAll"`
+	}
+	if err := c.execute(ctx, "ProviderDeleteHeartbeatMonitor", map[string]string{"id": id}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("delete heartbeat monitor: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) SetServiceLabel(ctx context.Context, serviceID, key, value string) error {
+	input := SetLabelInput{
+		Target: TargetInput{ID: serviceID, Type: "service"},
+		Key:    key,
+		Value:  value,
+	}
+	var result struct {
+		Success bool `json:"setLabel"`
+	}
+	if err := c.execute(ctx, "ProviderSetServiceLabel", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("set service label: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) ReadServiceLabels(ctx context.Context, serviceID string) (map[string]string, error) {
+	var result struct {
+		Service *struct {
+			ID     string         `json:"id"`
+			Labels []ServiceLabel `json:"labels"`
+		} `json:"service"`
+	}
+	if err := c.execute(ctx, "ProviderReadServiceLabels", map[string]string{"id": serviceID}, &result); err != nil {
+		return nil, err
+	}
+	if result.Service == nil {
+		return nil, ErrNotFound
+	}
+	labels := make(map[string]string, len(result.Service.Labels))
+	for _, l := range result.Service.Labels {
+		labels[l.Key] = l.Value
+	}
+	return labels, nil
+}
+
+func (c *Client) SearchServices(ctx context.Context, search string) ([]Service, error) {
+	var result struct {
+		Services struct {
+			Nodes []Service `json:"nodes"`
+		} `json:"services"`
+	}
+	if err := c.execute(ctx, "ProviderSearchServices", map[string]string{"search": search}, &result); err != nil {
+		return nil, err
+	}
+	return result.Services.Nodes, nil
+}
+
+func (c *Client) SearchEscalationPolicies(ctx context.Context, search string) ([]EscalationPolicy, error) {
+	var result struct {
+		EscalationPolicies struct {
+			Nodes []EscalationPolicy `json:"nodes"`
+		} `json:"escalationPolicies"`
+	}
+	if err := c.execute(ctx, "ProviderSearchEscalationPolicies", map[string]string{"search": search}, &result); err != nil {
+		return nil, err
+	}
+	return result.EscalationPolicies.Nodes, nil
 }

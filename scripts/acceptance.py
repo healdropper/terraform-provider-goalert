@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import urllib.request
 from fixture import ROOT, disposable, poc, run
 
 V001_DOCUMENT = """query ProviderReadService($id: ID!) {
@@ -91,6 +92,30 @@ mutation ProviderUpdateEscalationPolicyStep($input: UpdateEscalationPolicyStepIn
   updateEscalationPolicyStep(input: $input)
 }
 """
+
+V003_DOCUMENT = V002_DOCUMENT + """query ProviderReadIntegrationKey($id: ID!) {
+  integrationKey(id: $id) {
+    id
+    name
+    type
+    href
+    serviceID
+  }
+}
+mutation ProviderCreateIntegrationKey($input: CreateIntegrationKeyInput!) {
+  createIntegrationKey(input: $input) {
+    id
+    name
+    type
+    href
+    serviceID
+  }
+}
+mutation ProviderDeleteIntegrationKey($id: ID!) {
+  deleteAll(input: [{type: integrationKey, id: $id}])
+}
+"""
+
 
 def service_acceptance(f, provider_dir, template=None):
     with tempfile.TemporaryDirectory(prefix="goalert-provider-acceptance-") as tmp:
@@ -573,6 +598,212 @@ resource "goalert_integration_key" "imported" {{
         print("PASS: clean teardown destroys integration key and parent resources.", flush=True)
 
 
+def v004_acceptance(f, provider_dir):
+    with tempfile.TemporaryDirectory(prefix="goalert-v004-acceptance-") as tmp:
+        directory = Path(tmp)
+        cli = directory / "development.tfrc"
+        cli.write_text('provider_installation {\n  dev_overrides {\n    "registry.terraform.io/healdropper/goalert" = '
+                       + json.dumps(str(provider_dir.resolve()).replace("\\", "/"))
+                       + '\n  }\n  direct { exclude = ["registry.terraform.io/healdropper/goalert"] }\n}\n')
+        env = dict(os.environ, TF_CLI_CONFIG_FILE=str(cli), GOALERT_ENDPOINT=f.url+"/api/graphql",
+                   GOALERT_API_KEY=f.token, TF_IN_AUTOMATION="1", CHECKPOINT_DISABLE="1")
+        for key in list(env):
+            if key.startswith("TF_CLI_ARGS") or key.startswith("TF_LOG") or key in ("TF_DATA_DIR","TF_WORKSPACE"):
+                env.pop(key)
+
+        policy_id = f.policy("v004 Acceptance Policy")
+        svc = f.graphql(
+            operation="ProviderCreateService",
+            variables={"name": "v004 Acceptance Service", "description": "Testing heartbeats, labels, data sources", "escalationPolicyID": policy_id}
+        )["createService"]
+        service_id = svc["id"]
+
+        config = f"""
+terraform {{
+  required_providers {{
+    goalert = {{ source = "healdropper/goalert" }}
+  }}
+}}
+provider "goalert" {{}}
+
+variable "hb_name" {{ type = string }}
+variable "hb_timeout" {{ type = number }}
+variable "label_value" {{ type = string }}
+
+resource "goalert_heartbeat_monitor" "test" {{
+  service_id      = "{service_id}"
+  name            = var.hb_name
+  timeout_minutes = var.hb_timeout
+}}
+
+resource "goalert_service_label" "env" {{
+  service_id = "{service_id}"
+  key        = "example.com/environment"
+  value      = var.label_value
+}}
+
+data "goalert_service" "by_name" {{
+  name = "v004 Acceptance Service"
+  depends_on = [goalert_service_label.env]
+}}
+
+data "goalert_service" "by_id" {{
+  id = "{service_id}"
+}}
+
+data "goalert_escalation_policy" "by_name" {{
+  name = "v004 Acceptance Policy"
+}}
+
+data "goalert_heartbeat_monitor" "by_id" {{
+  id = goalert_heartbeat_monitor.test.id
+}}
+
+output "hb_ping_url" {{
+  value     = goalert_heartbeat_monitor.test.href
+  sensitive = true
+}}
+
+output "ds_service_policy_id" {{
+  value = data.goalert_service.by_name.escalation_policy_id
+}}
+
+output "ds_hb_timeout" {{
+  value = data.goalert_heartbeat_monitor.by_id.timeout_minutes
+}}
+"""
+        (directory/"main.tf").write_text(config)
+
+        def variables(hb_name="Nightly Worker", hb_timeout=15, label_val="staging"):
+            (directory/"terraform.tfvars.json").write_text(json.dumps({
+                "hb_name": hb_name,
+                "hb_timeout": hb_timeout,
+                "label_value": label_val,
+            }))
+
+        def tf(*args, accepted=(0,), override=None):
+            return run(["terraform", *args], cwd=directory, env=override or env, accepted=accepted)
+
+        def plan(expected_changes):
+            tf("plan", "-input=false", "-no-color", "-out=plan.bin")
+            summary = json.loads(run(["terraform", "show", "-json", "plan.bin"], cwd=directory, env=env).stdout)
+            changes = [c for c in summary.get("resource_changes", []) if c.get("mode") == "managed" and c.get("change", {}).get("actions") != ["no-op"]]
+            assert len(changes) == expected_changes, f"expected {expected_changes} changes, got {len(changes)}"
+
+        def clean():
+            res = tf("plan", "-detailed-exitcode", "-no-color", accepted=(0,))
+            assert res.returncode == 0
+            (directory/"plan.bin").unlink(missing_ok=True)
+
+        def get_resource_values(address):
+            result = tf("show", "-json")
+            state = json.loads(result.stdout)
+            for res in state.get("values", {}).get("root_module", {}).get("resources", []):
+                if res.get("address") == address:
+                    return res.get("values", {})
+            return None
+
+        # 1. Initial creation
+        variables("Nightly Worker", 15, "staging")
+        plan(2)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        hb_state = get_resource_values("goalert_heartbeat_monitor.test")
+        lbl_state = get_resource_values("goalert_service_label.env")
+        assert hb_state is not None, "missing heartbeat monitor state"
+        assert lbl_state is not None, "missing service label state"
+        hb_id = hb_state["id"]
+        assert hb_state["name"] == "Nightly Worker"
+        assert hb_state["timeout_minutes"] == 15
+        assert "/api/v2/heartbeat/" in hb_state["href"]
+        assert lbl_state["value"] == "staging"
+
+        # 2. Ping delivery: Send HTTP POST to href
+        ping_req = urllib.request.Request(hb_state["href"], data=b"", method="POST")
+        with urllib.request.urlopen(ping_req, timeout=10) as resp:
+            assert resp.status == 200, f"expected HTTP 200 ping, got {resp.status}"
+        print("PASS: goalert_heartbeat_monitor created and ping received successfully.", flush=True)
+
+        # 3. Data sources verified
+        output_res = tf("output", "-json")
+        outputs = json.loads(output_res.stdout)
+        assert outputs["ds_service_policy_id"]["value"] == policy_id
+        assert outputs["ds_hb_timeout"]["value"] == 15
+        print("PASS: data.goalert_service, data.goalert_escalation_policy, and data.goalert_heartbeat_monitor resolved.", flush=True)
+
+        # 4. In-place update of heartbeat monitor and service label
+        variables("Nightly Worker Updated", 30, "production")
+        plan(2)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+        updated_hb = get_resource_values("goalert_heartbeat_monitor.test")
+        updated_lbl = get_resource_values("goalert_service_label.env")
+        assert updated_hb["id"] == hb_id, "heartbeat monitor was unexpectedly replaced instead of updated in-place"
+        assert updated_hb["name"] == "Nightly Worker Updated"
+        assert updated_hb["timeout_minutes"] == 30
+        assert updated_lbl["value"] == "production"
+        print("PASS: in-place update for heartbeat monitor and service label verified.", flush=True)
+
+        # 5. Drift detection and repair
+        f.graphql(operation="ProviderDeleteHeartbeatMonitor", variables={"id": hb_id})
+        plan(1)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+        recreated_hb = get_resource_values("goalert_heartbeat_monitor.test")
+        recreated_id = recreated_hb["id"]
+        assert recreated_id != hb_id
+        print("PASS: external deletion detected; heartbeat monitor recreated.", flush=True)
+
+        # 6. Import verification (UUID for heartbeat monitor, compound for label)
+        import_config = config + f"""
+resource "goalert_heartbeat_monitor" "imported" {{
+  service_id      = "{service_id}"
+  name            = "{recreated_hb['name']}"
+  timeout_minutes = {recreated_hb['timeout_minutes']}
+}}
+
+resource "goalert_service_label" "imported_lbl" {{
+  service_id = "{service_id}"
+  key        = "example.com/environment"
+  value      = "production"
+}}
+"""
+        (directory/"main.tf").write_text(import_config)
+        tf("import", "goalert_heartbeat_monitor.imported", recreated_id)
+        imported_hb = get_resource_values("goalert_heartbeat_monitor.imported")
+        assert imported_hb["id"] == recreated_id
+        assert imported_hb["href"] == recreated_hb["href"]
+
+        tf("import", "goalert_service_label.imported_lbl", f"{service_id}/example.com/environment")
+        imported_lbl = get_resource_values("goalert_service_label.imported_lbl")
+        assert imported_lbl["value"] == "production"
+        clean()
+        print("PASS: goalert_heartbeat_monitor and goalert_service_label imported successfully.", flush=True)
+
+        # 7. Key migration test: old v0.0.3 key fails without state corruption
+        before_state = (directory / "terraform.tfstate").read_bytes()
+        v003_key = f.key("admin", document=V003_DOCUMENT)
+        bad_key_env = dict(env, GOALERT_API_KEY=v003_key)
+        v003_result = tf("plan", "-input=false", "-no-color", accepted=(1,), override=bad_key_env)
+        v003_out = v003_result.stdout + v003_result.stderr
+        assert any(expected in v003_out for expected in [
+            "wrong query for API key",
+            "API key document mismatch",
+            "HTTP status 422",
+        ])
+        assert (directory / "terraform.tfstate").read_bytes() == before_state
+        print("PASS: old v0.0.3 API key rejected by GoAlert AST hash validation for v0.0.4 operations.", flush=True)
+
+        # 8. Clean destroy
+        tf("destroy", "-input=false", "-auto-approve", "-no-color")
+        clean_after = f.graphql(operation="ProviderReadHeartbeatMonitor", variables={"id": recreated_id}, raw=True)
+        assert clean_after.get("data", {}).get("heartbeatMonitor") is None
+        f.graphql(operation="ProviderDeleteService", variables={"id": service_id})
+        f.graphql(operation="ProviderDeleteEscalationPolicy", variables={"id": policy_id})
+        print("PASS: clean teardown destroys v0.0.4 resources on remote GoAlert.", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider-dir", type=Path, default=ROOT/"bin")
@@ -583,3 +814,4 @@ if __name__ == "__main__":
         service_acceptance(fixture, args.provider_dir, args.config_template)
         policy_acceptance(fixture, args.provider_dir)
         integration_key_acceptance(fixture, args.provider_dir)
+        v004_acceptance(fixture, args.provider_dir)

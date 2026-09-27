@@ -1,7 +1,7 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: v0.0.1 (services), v0.0.2 (escalation policies with webhook routing), and v0.0.3 (ingress and integration keys) completed. v0.0.4 (heartbeats, labels, data sources, and v0.35.0) in planning.
+Status: v0.0.1 (services), v0.0.2 (escalation policies with webhook routing), and v0.0.3 (ingress and integration keys) completed. v0.0.4 (heartbeats, labels, data sources, and v0.35.0) implemented and verified, in PR review.
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
 Preserve the v0.0.x cadence during private development until the v1.0.0 Registry publication milestone.
