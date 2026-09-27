@@ -1,7 +1,7 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: v0.0.1 (services), v0.0.2 (escalation policies with webhook routing), and v0.0.3 (ingress and integration keys) completed. v0.0.4 (heartbeats, labels, data sources, and v0.35.0) implemented and verified, in PR review.
+Status: v0.0.1, v0.0.2, v0.0.3, and v0.0.4 completed. v0.0.5 (user identity, contact methods, and notification rules) next.
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
 Preserve the v0.0.x cadence during private development until the v1.0.0 Registry publication milestone.
@@ -17,13 +17,16 @@ Preserve the v0.0.x cadence during private development until the v1.0.0 Registry
 - **v0.0.3**: [ingress and integration keys](milestones/v0.0.3.md), merged through
   [PR #30](https://github.com/healdropper/terraform-provider-goalert/pull/30) on
   2026-09-26. Resources: `goalert_integration_key`. Closed on GitHub.
+- **v0.0.4**: [heartbeats, labels and data sources](milestones/v0.0.4.md), merged through
+  [PR #36](https://github.com/healdropper/terraform-provider-goalert/pull/36) on
+  2026-09-27. Resources: `goalert_heartbeat_monitor`, `goalert_service_label`.
+  Data sources: `goalert_service`, `goalert_escalation_policy`, `goalert_integration_key`, `goalert_heartbeat_monitor`.
+  Closed on GitHub.
 
 ## Active milestone
 
-- **v0.0.4**: [heartbeats, labels and data sources](milestones/v0.0.4.md), planned in
-  [Sprint 3](sprints/sprint-3.md) and tracked in
-  [GitHub Milestone 4](https://github.com/healdropper/terraform-provider-goalert/milestone/4).
-  - Scope: `goalert_heartbeat_monitor` resource (#18), `goalert_service_label` resource, foundational data sources (`service`, `escalation_policy`, `integration_key`, `heartbeat_monitor`), and GoAlert v0.35.0 compatibility (#22).
+- **v0.0.5**: [human identity, contact methods, and notification rules](milestones/v0.0.5-preview.md).
+  - Scope: `goalert_user`, `goalert_user_contact_method`, `goalert_user_notification_rule` resources and user data source.
 
 ## Planned milestones (full API coverage & Registry launch)
 
