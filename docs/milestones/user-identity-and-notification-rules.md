@@ -1,6 +1,6 @@
-# v0.0.5: user identity, contact methods, and notification rules
+# User Identity and Notification Rules
 
-Owner: healdropper. Recorded: 2026-09-27.
+Owner: healdropper. Recorded: 2026-09-27. Former milestone reference: v0.0.5.
 Status: Planned and tracked under [GitHub milestone 5](https://github.com/healdropper/terraform-provider-goalert/milestone/5)
 and [Sprint 4](../sprints/sprint-4.md).
 

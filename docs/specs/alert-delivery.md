@@ -15,7 +15,7 @@ small provider increments. A Telegram group is preferred for adding people; a
 private group is possible, but no bot or group has been selected or provisioned.
 Grafana outage detection is a later [availability proposal](grafana-availability.md).
 
-The [v0.0.2 planning record](../milestones/v0.0.2.md) and
+The [Escalation Policies and Webhook Routing planning record](../milestones/escalation-policies-and-webhook-routing.md) and
 [Sprint 1](../sprints/sprint-1.md) hold the next increment's boundaries. Detailed
 resource behavior, recovery notifications and acknowledgement remain unresolved.
 These product decisions do not retroactively accept the full proposed table below.

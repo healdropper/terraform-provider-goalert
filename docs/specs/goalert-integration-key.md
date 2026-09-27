@@ -4,7 +4,7 @@ Owner: healdropper.
 Status: Accepted specification for v0.0.3 under V003-SPEC.
 Recorded: 2026-09-26.
 Related: [Issue #24](https://github.com/healdropper/terraform-provider-goalert/issues/24),
-[Milestone v0.0.3](../milestones/v0.0.3.md),
+[Milestone Ingress and Integration Keys](../milestones/ingress-and-integration-keys.md),
 [Feasibility research](../research/integration-key-feasibility.md).
 
 ## Requirements and scope

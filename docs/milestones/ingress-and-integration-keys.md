@@ -1,6 +1,6 @@
-# v0.0.3: ingress and integration keys
+# Ingress and Integration Keys
 
-Owner: healdropper. Recorded: 2026-09-26.
+Owner: healdropper. Recorded: 2026-09-26. Former milestone reference: v0.0.3.
 Status: Completed and verified. Ingress increment (`goalert_integration_key`
 resource for Grafana alert reception on managed GoAlert services) implemented,
 verified via unit and acceptance suites, and closed on GitHub.

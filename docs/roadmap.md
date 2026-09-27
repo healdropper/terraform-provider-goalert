@@ -11,18 +11,18 @@ Delivery milestones represent human-scoped goals and functional capability theme
 - **Service Contract**: [service contract](specs/goalert-service.md), merged through
   [PR #1](https://github.com/healdropper/terraform-provider-goalert/pull/1) on
   2026-09-21. Resources: `goalert_service`.
-- **Escalation Policies and Webhook Routing**: [routing increment](milestones/v0.0.2.md), merged through
+- **Escalation Policies and Webhook Routing**: [routing increment](milestones/escalation-policies-and-webhook-routing.md), merged through
   [PR #17](https://github.com/healdropper/terraform-provider-goalert/pull/17) on
   2026-09-22. Resources: `goalert_escalation_policy` (with webhook step target). Successfully deployed and adopted in production cluster `cenarion-watch`.
-- **Ingress and Integration Keys**: [ingress and integration keys](milestones/v0.0.3.md), merged through
+- **Ingress and Integration Keys**: [ingress and integration keys](milestones/ingress-and-integration-keys.md), merged through
   [PR #30](https://github.com/healdropper/terraform-provider-goalert/pull/30) on
   2026-09-26. Resources: `goalert_integration_key`. Closed on GitHub.
-- **Heartbeat Monitors and Service Labels**: [heartbeats, labels and data sources](milestones/v0.0.4.md), merged through
+- **Heartbeat Monitors and Service Labels**: [heartbeats, labels and data sources](milestones/heartbeat-monitors-and-service-labels.md), merged through
   [PR #36](https://github.com/healdropper/terraform-provider-goalert/pull/36) on
   2026-09-27. Resources: `goalert_heartbeat_monitor`, `goalert_service_label`.
   Data sources: `goalert_service`, `goalert_escalation_policy`, `goalert_integration_key`, `goalert_heartbeat_monitor`.
   Closed on GitHub.
-- **User Identity and Notification Rules**: [human identity, contact methods, and notification rules](milestones/v0.0.5.md), merged through
+- **User Identity and Notification Rules**: [human identity, contact methods, and notification rules](milestones/user-identity-and-notification-rules.md), merged through
   [PR #42](https://github.com/healdropper/terraform-provider-goalert/pull/42) on 2026-09-27.
   Resources: `goalert_user`, `goalert_user_contact_method`, `goalert_user_notification_rule`.
   Data sources: `goalert_user`. Closed on GitHub.

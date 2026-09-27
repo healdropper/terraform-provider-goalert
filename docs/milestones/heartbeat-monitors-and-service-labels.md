@@ -1,6 +1,6 @@
-# v0.0.4: heartbeat monitors, labels, and data sources
+# Heartbeat Monitors and Service Labels
 
-Owner: healdropper. Recorded: 2026-09-27.
+Owner: healdropper. Recorded: 2026-09-27. Former milestone reference: v0.0.4.
 Status: Completed and closed through [PR #36](https://github.com/healdropper/terraform-provider-goalert/pull/36).
 [GitHub milestone 4](https://github.com/healdropper/terraform-provider-goalert/milestone/4) is closed on GitHub.
 
