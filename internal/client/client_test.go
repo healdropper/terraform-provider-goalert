@@ -470,3 +470,168 @@ func TestIntegrationKeyOperations(t *testing.T) {
 		}
 	})
 }
+
+func TestHeartbeatMonitorLifecycle(t *testing.T) {
+	const hbID = "33333333-3333-4333-8333-333333333333"
+	const hbServiceID = "11111111-1111-4111-8111-111111111111"
+	const hbHref = "http://127.0.0.1:18081/api/v2/heartbeat/" + hbID
+
+	t.Run("full CRUD lifecycle", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Operation string `json:"operationName"`
+				Variables map[string]any
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			switch body.Operation {
+			case "ProviderCreateHeartbeatMonitor":
+				input := body.Variables["input"].(map[string]any)
+				if input["name"] != "Worker Monitor" || input["serviceID"] != hbServiceID || int64(input["timeoutMinutes"].(float64)) != 15 {
+					t.Errorf("unexpected create input: %+v", input)
+				}
+				fmt.Fprint(w, `{"data":{"createHeartbeatMonitor":{"id":"`+hbID+`","serviceID":"`+hbServiceID+`","name":"Worker Monitor","timeoutMinutes":15,"href":"`+hbHref+`"}}}`)
+			case "ProviderReadHeartbeatMonitor":
+				if body.Variables["id"] != hbID {
+					t.Errorf("unexpected read ID: %v", body.Variables["id"])
+				}
+				fmt.Fprint(w, `{"data":{"heartbeatMonitor":{"id":"`+hbID+`","serviceID":"`+hbServiceID+`","name":"Worker Monitor","timeoutMinutes":15,"href":"`+hbHref+`"}}}`)
+			case "ProviderUpdateHeartbeatMonitor":
+				input := body.Variables["input"].(map[string]any)
+				if input["id"] != hbID || input["name"] != "Renamed Monitor" || int64(input["timeoutMinutes"].(float64)) != 30 {
+					t.Errorf("unexpected update input: %+v", input)
+				}
+				fmt.Fprint(w, `{"data":{"updateHeartbeatMonitor":true}}`)
+			case "ProviderDeleteHeartbeatMonitor":
+				if body.Variables["id"] != hbID {
+					t.Errorf("unexpected delete ID: %v", body.Variables["id"])
+				}
+				fmt.Fprint(w, `{"data":{"deleteAll":true}}`)
+			default:
+				t.Errorf("unexpected operation: %s", body.Operation)
+			}
+		}))
+		defer server.Close()
+
+		c, err := New(server.URL, "token", true)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		created, err := c.CreateHeartbeatMonitor(context.Background(), CreateHeartbeatMonitorInput{
+			ServiceID:      hbServiceID,
+			Name:           "Worker Monitor",
+			TimeoutMinutes: 15,
+		})
+		if err != nil {
+			t.Fatalf("unexpected create error: %v", err)
+		}
+		if created.ID != hbID || created.Name != "Worker Monitor" || created.TimeoutMinutes != 15 || created.Href != hbHref {
+			t.Fatalf("unexpected created monitor: %+v", created)
+		}
+
+		read, err := c.ReadHeartbeatMonitor(context.Background(), hbID)
+		if err != nil {
+			t.Fatalf("unexpected read error: %v", err)
+		}
+		if read.ID != hbID || read.Name != "Worker Monitor" {
+			t.Fatalf("unexpected read monitor: %+v", read)
+		}
+
+		err = c.UpdateHeartbeatMonitor(context.Background(), UpdateHeartbeatMonitorInput{
+			ID:             hbID,
+			Name:           "Renamed Monitor",
+			TimeoutMinutes: 30,
+		})
+		if err != nil {
+			t.Fatalf("unexpected update error: %v", err)
+		}
+
+		err = c.DeleteHeartbeatMonitor(context.Background(), hbID)
+		if err != nil {
+			t.Fatalf("unexpected delete error: %v", err)
+		}
+	})
+
+	t.Run("read not found returns ErrNotFound", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"data":{"heartbeatMonitor":null}}`)
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		_, err := c.ReadHeartbeatMonitor(context.Background(), hbID)
+		if !errors.Is(err, ErrNotFound) {
+			t.Fatalf("expected ErrNotFound, got: %v", err)
+		}
+	})
+}
+
+func TestServiceLabels(t *testing.T) {
+	const testServiceID = "11111111-1111-4111-8111-111111111111"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Operation string `json:"operationName"`
+			Variables map[string]any
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		switch body.Operation {
+		case "ProviderSetServiceLabel":
+			fmt.Fprint(w, `{"data":{"setLabel":true}}`)
+		case "ProviderReadServiceLabels":
+			fmt.Fprint(w, `{"data":{"service":{"id":"`+testServiceID+`","labels":[{"key":"example.com/env","value":"prod"}]}}}`)
+		default:
+			t.Errorf("unexpected operation: %s", body.Operation)
+		}
+	}))
+	defer server.Close()
+
+	c, _ := New(server.URL, "token", true)
+	if err := c.SetServiceLabel(context.Background(), testServiceID, "example.com/env", "prod"); err != nil {
+		t.Fatalf("unexpected set label error: %v", err)
+	}
+
+	labels, err := c.ReadServiceLabels(context.Background(), testServiceID)
+	if err != nil {
+		t.Fatalf("unexpected read labels error: %v", err)
+	}
+	if labels["example.com/env"] != "prod" {
+		t.Fatalf("expected example.com/env=prod, got: %v", labels)
+	}
+}
+
+func TestSearchQueries(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Operation string `json:"operationName"`
+			Variables map[string]any
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		switch body.Operation {
+		case "ProviderSearchServices":
+			fmt.Fprint(w, `{"data":{"services":{"nodes":[{"id":"`+sid+`","name":"api","description":"","escalationPolicy":{"id":"`+pid+`"}}]}}}`)
+		case "ProviderSearchEscalationPolicies":
+			fmt.Fprint(w, `{"data":{"escalationPolicies":{"nodes":[{"id":"`+pid+`","name":"policy","description":"","repeat":3}]}}}`)
+		default:
+			t.Errorf("unexpected operation: %s", body.Operation)
+		}
+	}))
+	defer server.Close()
+
+	c, _ := New(server.URL, "token", true)
+	services, err := c.SearchServices(context.Background(), "api")
+	if err != nil || len(services) != 1 || services[0].ID != sid {
+		t.Fatalf("unexpected services search result: %v, err: %v", services, err)
+	}
+
+	policies, err := c.SearchEscalationPolicies(context.Background(), "policy")
+	if err != nil || len(policies) != 1 || policies[0].ID != pid {
+		t.Fatalf("unexpected policies search result: %v, err: %v", policies, err)
+	}
+}

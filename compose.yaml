@@ -13,7 +13,7 @@ services:
       timeout: 3s
       retries: 60
   goalert:
-    image: goalert/goalert:v0.34.1@sha256:c3ebee8abdf6035cbf7ea2aa855807ce484d44e5125d413cde1f9811039ddb75
+    image: goalert/goalert:v0.35.0@sha256:f090a90538d7e61446aad245c21a7a1694d36d7b4f6c56fc55e9cc7405d9c03f
     depends_on:
       postgres:
         condition: service_healthy
