@@ -835,3 +835,149 @@ func TestUserNotificationRuleOperations(t *testing.T) {
 		}
 	})
 }
+
+func TestRotationOperations(t *testing.T) {
+	const rotID = "77777777-7777-4777-8777-777777777777"
+	const uID1 = "11111111-1111-4111-8111-111111111111"
+	const uID2 = "22222222-2222-4222-8222-222222222222"
+
+	t.Run("rotation lifecycle", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Operation string `json:"operationName"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			switch body.Operation {
+			case "ProviderCreateRotation":
+				fmt.Fprint(w, `{"data":{"createRotation":{"id":"`+rotID+`","name":"Primary On-Call","description":"Daily rotation","type":"daily","start":"2026-10-01T08:00:00Z","timeZone":"Europe/Madrid","shiftLength":1,"userIDs":["`+uID1+`","`+uID2+`"],"activeUserIndex":0}}}`)
+			case "ProviderReadRotation":
+				fmt.Fprint(w, `{"data":{"rotation":{"id":"`+rotID+`","name":"Primary On-Call","description":"Daily rotation","type":"daily","start":"2026-10-01T08:00:00Z","timeZone":"Europe/Madrid","shiftLength":1,"userIDs":["`+uID1+`","`+uID2+`"],"activeUserIndex":0}}}`)
+			case "ProviderSearchRotations":
+				fmt.Fprint(w, `{"data":{"rotations":{"nodes":[{"id":"`+rotID+`","name":"Primary On-Call","description":"Daily rotation","type":"daily","start":"2026-10-01T08:00:00Z","timeZone":"Europe/Madrid","shiftLength":1,"userIDs":["`+uID1+`","`+uID2+`"],"activeUserIndex":0}]}}}`)
+			case "ProviderUpdateRotation":
+				fmt.Fprint(w, `{"data":{"updateRotation":true}}`)
+			case "ProviderDeleteRotation":
+				fmt.Fprint(w, `{"data":{"deleteAll":true}}`)
+			default:
+				t.Errorf("unexpected operation: %s", body.Operation)
+			}
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		shiftLength := int64(1)
+		desc := "Daily rotation"
+		rot, err := c.CreateRotation(context.Background(), CreateRotationInput{
+			Name:        "Primary On-Call",
+			Description: &desc,
+			Type:        "daily",
+			Start:       "2026-10-01T08:00:00Z",
+			TimeZone:    "Europe/Madrid",
+			ShiftLength: &shiftLength,
+			UserIDs:     []string{uID1, uID2},
+		})
+		if err != nil || rot.ID != rotID || rot.Name != "Primary On-Call" || len(rot.UserIDs) != 2 {
+			t.Fatalf("unexpected create rotation result: %v, err: %v", rot, err)
+		}
+
+		readRot, err := c.ReadRotation(context.Background(), rotID)
+		if err != nil || readRot.ID != rotID || readRot.ActiveUserIndex != 0 {
+			t.Fatalf("unexpected read rotation: %v, err: %v", readRot, err)
+		}
+
+		searchResults, err := c.SearchRotations(context.Background(), "Primary")
+		if err != nil || len(searchResults) != 1 || searchResults[0].ID != rotID {
+			t.Fatalf("unexpected search rotations: %v, err: %v", searchResults, err)
+		}
+
+		nameUpdate := "Updated On-Call"
+		if err := c.UpdateRotation(context.Background(), UpdateRotationInput{
+			ID:   rotID,
+			Name: &nameUpdate,
+		}); err != nil {
+			t.Fatalf("unexpected update rotation error: %v", err)
+		}
+
+		if err := c.DeleteRotation(context.Background(), rotID); err != nil {
+			t.Fatalf("unexpected delete rotation error: %v", err)
+		}
+	})
+
+	t.Run("rotation not found", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"data":{"rotation":null}}`)
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		_, err := c.ReadRotation(context.Background(), rotID)
+		if !errors.Is(err, ErrNotFound) {
+			t.Fatalf("expected ErrNotFound, got: %v", err)
+		}
+	})
+}
+
+func TestEscalationPolicyStepTargets(t *testing.T) {
+	const epID = "88888888-8888-4888-8888-888888888888"
+	const stepID = "99999999-9999-4999-8999-999999999999"
+	const uID = "11111111-1111-4111-8111-111111111111"
+	const rotID = "77777777-7777-4777-8777-777777777777"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Operation string `json:"operationName"`
+			Variables struct {
+				Input struct {
+					Targets []TargetInput `json:"targets"`
+				} `json:"input"`
+			} `json:"variables"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		switch body.Operation {
+		case "ProviderCreateEscalationPolicyStep":
+			if len(body.Variables.Input.Targets) != 2 {
+				t.Errorf("expected 2 targets, got %d", len(body.Variables.Input.Targets))
+			}
+			fmt.Fprint(w, `{"data":{"createEscalationPolicyStep":{"id":"`+stepID+`","stepNumber":0,"delayMinutes":15,"actions":[{"type":"builtin-user","args":{"user_id":"`+uID+`"}},{"type":"builtin-rotation","args":{"rotation_id":"`+rotID+`"}}]}}}`)
+		case "ProviderUpdateEscalationPolicyStep":
+			if len(body.Variables.Input.Targets) != 2 {
+				t.Errorf("expected 2 targets, got %d", len(body.Variables.Input.Targets))
+			}
+			fmt.Fprint(w, `{"data":{"updateEscalationPolicyStep":true}}`)
+		default:
+			t.Errorf("unexpected operation: %s", body.Operation)
+		}
+	}))
+	defer server.Close()
+
+	c, _ := New(server.URL, "token", true)
+	epIDVal := epID
+	step, err := c.CreateEscalationPolicyStep(context.Background(), CreateEscalationPolicyStepInput{
+		EscalationPolicyID: &epIDVal,
+		DelayMinutes:       15,
+		Targets: []TargetInput{
+			{ID: uID, Type: "user"},
+			{ID: rotID, Type: "rotation"},
+		},
+	})
+	if err != nil || step.ID != stepID || len(step.Actions) != 2 {
+		t.Fatalf("unexpected create step result: %v, err: %v", step, err)
+	}
+
+	delay := int64(20)
+	err = c.UpdateEscalationPolicyStep(context.Background(), UpdateEscalationPolicyStepInput{
+		ID:           stepID,
+		DelayMinutes: &delay,
+		Targets: []TargetInput{
+			{ID: uID, Type: "user"},
+			{ID: rotID, Type: "rotation"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected update step err: %v", err)
+	}
+}

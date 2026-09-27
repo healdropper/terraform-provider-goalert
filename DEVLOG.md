@@ -1,5 +1,16 @@
 # Development log
 
+## 2026-09-27 — Rotation resource, data source, and escalation step targets implementation (Issue #45, Gate ROT-IMPL)
+
+- Expanded canonical GraphQL document `internal/client/operations.graphql` with rotation operations: `ProviderCreateRotation`, `ProviderReadRotation`, `ProviderSearchRotations`, `ProviderUpdateRotation`, `ProviderDeleteRotation`.
+- Implemented type-safe client methods and data types in `internal/client/client.go`: `CreateRotation`, `ReadRotation`, `SearchRotations`, `UpdateRotation`, `DeleteRotation`, and extended `CreateEscalationPolicyStepInput` / `UpdateEscalationPolicyStepInput` with `Targets []TargetInput`.
+- Implemented `goalert_rotation` resource (`internal/provider/rotation_resource.go`) with validation for name pattern, shift frequencies (`daily`, `weekly`, `hourly`), timezone, and participant list.
+- Implemented `goalert_rotation` data source (`internal/provider/rotation_data_source.go`) supporting lookup by UUID or exact name search.
+- Extended `goalert_escalation_policy` (`internal/provider/escalation_policy_resource.go`) step block schema to support `user_ids` and `rotation_ids` targets alongside `webhook_action`. Updated `stepMatches` and step creation/update logic.
+- Registered `NewRotationResource` and `NewRotationDataSource` in `internal/provider/provider.go`.
+- Added unit tests covering all rotation operations and step target matching in `internal/client/client_test.go`, `internal/provider/rotation_resource_test.go`, and `internal/provider/escalation_policy_resource_test.go`.
+- Delivery tracking: resolves [Issue #45](https://github.com/healdropper/terraform-provider-goalert/issues/45), unblocking ROT-VERIFY (Issue #46).
+
 ## 2026-09-27 — Milestone planning: Rotations and Escalation Targets and doctrine milestone naming alignment
 
 - Renamed past GitHub milestones and updated `docs/roadmap.md` to follow the updated Spec-Driven Lifecycle doctrine: milestones represent functional delivery themes rather than strict SemVer patch increments.
