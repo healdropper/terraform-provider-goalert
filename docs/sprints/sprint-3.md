@@ -1,8 +1,9 @@
 # Sprint 3: heartbeat monitors, labels, and data sources
 
 Owner: healdropper. Recorded: 2026-09-27.
-Status: Completed delivery sprint. [Milestone v0.0.4](../milestones/v0.0.4.md) is implemented and verified;
-[GitHub milestone 4](https://github.com/healdropper/terraform-provider-goalert/milestone/4) tracks delivery.
+Status: Completed delivery sprint. [Milestone v0.0.4](../milestones/v0.0.4.md) is closed;
+merged through [PR #36](https://github.com/healdropper/terraform-provider-goalert/pull/36) on 2026-09-27.
+[GitHub milestone 4](https://github.com/healdropper/terraform-provider-goalert/milestone/4) is closed on GitHub.
 
 ## Goal and user story
 
