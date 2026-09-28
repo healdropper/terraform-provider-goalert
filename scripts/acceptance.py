@@ -1322,11 +1322,284 @@ resource "goalert_rotation" "imported_rot" {{
         print("PASS: clean teardown destroys rotation and target policies on remote GoAlert.", flush=True)
 
 
+def schedules_acceptance(f, provider_dir):
+    with tempfile.TemporaryDirectory(prefix="goalert-provider-schedules-") as tmp:
+        directory = Path(tmp)
+        cli = directory / "development.tfrc"
+        cli.write_text('provider_installation {\n  dev_overrides {\n    "registry.terraform.io/healdropper/goalert" = '
+                       + json.dumps(str(provider_dir.resolve()).replace("\\", "/"))
+                       + '\n  }\n  direct { exclude = ["registry.terraform.io/healdropper/goalert"] }\n}\n')
+        env = dict(os.environ, TF_CLI_CONFIG_FILE=str(cli), GOALERT_ENDPOINT=f.url+"/api/graphql",
+                   GOALERT_API_KEY=f.token, TF_IN_AUTOMATION="1", CHECKPOINT_DISABLE="1")
+        for key in list(env):
+            if key.startswith("TF_CLI_ARGS") or key.startswith("TF_LOG") or key in ("TF_DATA_DIR", "TF_WORKSPACE"):
+                env.pop(key)
+
+        config = """
+terraform {
+  required_providers {
+    goalert = {
+      source = "healdropper/goalert"
+    }
+  }
+}
+
+provider "goalert" {
+  allow_insecure_http = true
+}
+
+variable "sched_name" {
+  type = string
+}
+variable "sched_desc" {
+  type = string
+}
+variable "rule_start" {
+  type    = string
+  default = "09:00"
+}
+variable "rule_end" {
+  type    = string
+  default = "17:00"
+}
+variable "override_end" {
+  type    = string
+  default = "2026-10-11T00:00:00Z"
+}
+
+resource "goalert_user" "alice" {
+  name     = "Alice Ops"
+  email    = "alice.sched@example.com"
+  role     = "user"
+  username = "alice-sched"
+}
+
+resource "goalert_user" "bob" {
+  name     = "Bob SRE"
+  email    = "bob.sched@example.com"
+  role     = "user"
+  username = "bob-sched"
+}
+
+resource "goalert_rotation" "primary" {
+  name         = "Primary Sched Rotation"
+  description  = "Rotation attached to schedule"
+  type         = "daily"
+  start_time   = "2026-10-01T08:00:00Z"
+  time_zone    = "Europe/Madrid"
+  shift_length = 1
+  user_ids     = [goalert_user.alice.id, goalert_user.bob.id]
+}
+
+resource "goalert_schedule" "engineering" {
+  name        = var.sched_name
+  description = var.sched_desc
+  time_zone   = "Europe/Madrid"
+}
+
+resource "goalert_schedule_rule" "weekday_coverage" {
+  schedule_id    = goalert_schedule.engineering.id
+  target_type    = "rotation"
+  target_id      = goalert_rotation.primary.id
+  start_time     = var.rule_start
+  end_time       = var.rule_end
+  weekday_filter = [false, true, true, true, true, true, false]
+}
+
+resource "goalert_user_override" "swap" {
+  schedule_id    = goalert_schedule.engineering.id
+  start_time     = "2026-10-10T00:00:00Z"
+  end_time       = var.override_end
+  add_user_id    = goalert_user.bob.id
+  remove_user_id = goalert_user.alice.id
+}
+
+resource "goalert_escalation_policy" "multi_target" {
+  name        = "Engineering Multi-Target Policy"
+  description = "Escalates to user, rotation, and schedule"
+  repeat      = 1
+
+  step {
+    delay_minutes = 15
+    user_ids      = [goalert_user.alice.id]
+    rotation_ids  = [goalert_rotation.primary.id]
+    schedule_ids  = [goalert_schedule.engineering.id]
+    webhook_action {
+      url = "https://example.com/alerts/step1"
+    }
+  }
+}
+
+data "goalert_schedule" "by_id" {
+  id         = goalert_schedule.engineering.id
+  depends_on = [goalert_schedule.engineering]
+}
+
+data "goalert_schedule" "by_name" {
+  name       = var.sched_name
+  depends_on = [goalert_schedule.engineering]
+}
+
+output "ds_sched_tz" {
+  value = data.goalert_schedule.by_id.time_zone
+}
+
+output "ds_sched_id" {
+  value = data.goalert_schedule.by_name.id
+}
+"""
+        (directory/"main.tf").write_text(config)
+
+        def variables(name="Engineering Schedule", desc="Primary on-call shift calendar", rule_start="09:00", rule_end="17:00", override_end="2026-10-11T00:00:00Z"):
+            (directory/"terraform.tfvars.json").write_text(json.dumps({
+                "sched_name": name,
+                "sched_desc": desc,
+                "rule_start": rule_start,
+                "rule_end": rule_end,
+                "override_end": override_end,
+            }))
+
+        def tf(*args, accepted=(0,), override=None):
+            return run(["terraform", *args], cwd=directory, env=override or env, accepted=accepted)
+
+        def plan(expected_changes):
+            tf("plan", "-input=false", "-no-color", "-out=plan.bin")
+            summary = json.loads(run(["terraform", "show", "-json", "plan.bin"], cwd=directory, env=env).stdout)
+            changes = [c for c in summary.get("resource_changes", []) if c.get("mode") == "managed" and c.get("change", {}).get("actions") != ["no-op"]]
+            assert len(changes) == expected_changes, f"expected {expected_changes} changes, got {len(changes)}"
+
+        def clean():
+            res = tf("plan", "-detailed-exitcode", "-no-color", accepted=(0,))
+            assert res.returncode == 0
+            (directory/"plan.bin").unlink(missing_ok=True)
+
+        def get_resource_values(address):
+            result = tf("show", "-json")
+            state = json.loads(result.stdout)
+            for res in state.get("values", {}).get("root_module", {}).get("resources", []):
+                if res.get("address") == address:
+                    return res.get("values", {})
+            return None
+
+        # 1. Initial creation (2 users, 1 rotation, 1 schedule, 1 rule, 1 override, 1 escalation policy = 7 resources)
+        variables("Engineering Schedule", "Primary on-call shift calendar")
+        plan(7)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        sched_state = get_resource_values("goalert_schedule.engineering")
+        rule_state = get_resource_values("goalert_schedule_rule.weekday_coverage")
+        uo_state = get_resource_values("goalert_user_override.swap")
+        ep_state = get_resource_values("goalert_escalation_policy.multi_target")
+        assert sched_state is not None, "missing schedule state"
+        assert rule_state is not None, "missing schedule rule state"
+        assert uo_state is not None, "missing user override state"
+        assert ep_state is not None, "missing escalation policy state"
+
+        sched_id = sched_state["id"]
+        rule_id = rule_state["id"]
+        uo_id = uo_state["id"]
+
+        assert sched_state["name"] == "Engineering Schedule"
+        assert sched_state["time_zone"] == "Europe/Madrid"
+        assert rule_state["schedule_id"] == sched_id
+        assert rule_state["start_time"] == "09:00"
+        assert rule_state["end_time"] == "17:00"
+        assert uo_state["schedule_id"] == sched_id
+        assert ep_state["step"][0]["schedule_ids"] == [sched_id]
+        print("PASS: initial creation of schedules, rules, overrides, and policy destinations verified.", flush=True)
+
+        # 2. Verify data sources
+        output_res = tf("output", "-json")
+        outputs = json.loads(output_res.stdout)
+        assert outputs["ds_sched_tz"]["value"] == "Europe/Madrid"
+        assert outputs["ds_sched_id"]["value"] == sched_id
+        print("PASS: data.goalert_schedule lookups by id and name verified.", flush=True)
+
+        # 3. In-place update (schedule name/desc, rule hours, override end = 3 changes)
+        variables("Engineering Schedule Renamed", "Updated shift calendar", rule_start="08:00", rule_end="18:00", override_end="2026-10-12T00:00:00Z")
+        plan(3)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        up_sched = get_resource_values("goalert_schedule.engineering")
+        up_rule = get_resource_values("goalert_schedule_rule.weekday_coverage")
+        up_uo = get_resource_values("goalert_user_override.swap")
+        assert up_sched["id"] == sched_id
+        assert up_sched["name"] == "Engineering Schedule Renamed"
+        assert up_rule["start_time"] == "08:00"
+        assert up_rule["end_time"] == "18:00"
+        assert up_uo["end_time"] == "2026-10-12T00:00:00Z"
+        print("PASS: in-place update of schedule, rule hours, and override duration verified.", flush=True)
+
+        # 4. Drift detection and repair
+        f.graphql(operation="ProviderDeleteUserOverride", variables={"id": uo_id})
+        tf("apply", "-input=false", "-auto-approve", "-no-color")
+        clean()
+        recreated_uo = get_resource_values("goalert_user_override.swap")
+        assert recreated_uo["id"] != uo_id
+        recreated_uo_id = recreated_uo["id"]
+        print("PASS: external user override deletion detected and repaired.", flush=True)
+
+        # 5. Import verification
+        import_config = config + f"""
+resource "goalert_schedule" "imported_sched" {{
+  name        = "{up_sched['name']}"
+  description = "{up_sched['description']}"
+  time_zone   = "{up_sched['time_zone']}"
+}}
+
+resource "goalert_schedule_rule" "imported_rule" {{
+  schedule_id    = "{sched_id}"
+  target_type    = "{up_rule['target_type']}"
+  target_id      = "{up_rule['target_id']}"
+  start_time     = "{up_rule['start_time']}"
+  end_time       = "{up_rule['end_time']}"
+  weekday_filter = {json.dumps(up_rule['weekday_filter'])}
+}}
+
+resource "goalert_user_override" "imported_uo" {{
+  schedule_id    = "{sched_id}"
+  start_time     = "{recreated_uo['start_time']}"
+  end_time       = "{recreated_uo['end_time']}"
+  add_user_id    = "{recreated_uo['add_user_id']}"
+  remove_user_id = "{recreated_uo['remove_user_id']}"
+}}
+"""
+        (directory/"main.tf").write_text(import_config)
+        tf("import", "goalert_schedule.imported_sched", sched_id)
+        tf("import", "goalert_schedule_rule.imported_rule", rule_id)
+        tf("import", "goalert_user_override.imported_uo", recreated_uo_id)
+        clean()
+        print("PASS: schedule, schedule rule, and user override imported successfully.", flush=True)
+
+        # 6. AST key migration test: v0.0.6 key rejected for schedule operations
+        before_state = (directory / "terraform.tfstate").read_bytes()
+        v006_document = (ROOT / "internal" / "client" / "operations.graphql").read_text().split("query ProviderReadSchedule")[0]
+        v006_key = f.key("admin", document=v006_document)
+        bad_key_env = dict(env, GOALERT_API_KEY=v006_key)
+        v006_result = tf("plan", "-input=false", "-no-color", accepted=(1,), override=bad_key_env)
+        v006_out = v006_result.stdout + v006_result.stderr
+        assert any(expected in v006_out for expected in [
+            "wrong query for API key",
+            "API key document mismatch",
+            "HTTP status 422",
+        ])
+        assert (directory / "terraform.tfstate").read_bytes() == before_state
+        print("PASS: old v0.0.6 API key rejected by GoAlert AST hash validation for schedule operations.", flush=True)
+
+        # 7. Clean destroy
+        tf("destroy", "-input=false", "-auto-approve", "-no-color")
+        clean_after = f.graphql(operation="ProviderReadSchedule", variables={"id": sched_id}, raw=True)
+        assert clean_after.get("data", {}).get("schedule") is None
+        print("PASS: clean teardown destroys schedule, rules, and overrides on remote GoAlert.", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider-dir", type=Path, default=ROOT/"bin")
     parser.add_argument("--config-template", type=Path)
-    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005", "rotations"], default="all")
+    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005", "rotations", "schedules"], default="all")
     args = parser.parse_args()
     with disposable() as fixture:
         if args.suite in ("all", "poc"):
@@ -1343,3 +1616,5 @@ if __name__ == "__main__":
             v005_acceptance(fixture, args.provider_dir)
         if args.suite in ("all", "rotations"):
             rotations_acceptance(fixture, args.provider_dir)
+        if args.suite in ("all", "schedules"):
+            schedules_acceptance(fixture, args.provider_dir)

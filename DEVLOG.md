@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-09-28 — Schedules and User Overrides verification and closure (Issue #55, Gate SCHED-VERIFY)
+
+- Implemented and executed end-to-end acceptance test suite `schedules_acceptance` in `scripts/acceptance.py`:
+  1. Creation of users, rotation, schedule, schedule rule with weekday filter, user override, and multi-target escalation policy.
+  2. Data source lookups for `data.goalert_schedule` by UUID and name.
+  3. In-place modification of schedule attributes, rule active hours (08:00 - 18:00), and override duration.
+  4. Remote drift detection, external user override deletion, and state reconciliation.
+  5. State import of `goalert_schedule`, compound key import of `goalert_schedule_rule`, and import of `goalert_user_override`.
+  6. AST hash key migration validation (outdated v0.0.6 API key rejected with HTTP 422).
+  7. Clean remote destroy of schedules, rules, overrides, rotations, and policies.
+- Verified 100% passing across unit test suite (`go test ./...`) and end-to-end acceptance tests.
+- Resolves [Issue #55](https://github.com/healdropper/terraform-provider-goalert/issues/55), successfully completing Milestone 7 (`Schedules and User Overrides`).
+
 ## 2026-09-28 — Schedule, rule, override, and step destination implementation (Issue #54, Gate SCHED-IMPL)
 
 - Expanded canonical GraphQL document `internal/client/operations.graphql` with schedule operations: `ProviderCreateSchedule`, `ProviderReadSchedule`, `ProviderSearchSchedules`, `ProviderUpdateSchedule`, `ProviderDeleteSchedule`, `ProviderUpdateScheduleTarget`, `ProviderCreateUserOverride`, `ProviderReadUserOverride`, `ProviderUpdateUserOverride`, `ProviderDeleteUserOverride`.
