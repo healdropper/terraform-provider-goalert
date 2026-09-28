@@ -1086,11 +1086,247 @@ resource "goalert_user_notification_rule" "imported_nr" {{
         print("PASS: clean teardown destroys v0.0.5 resources on remote GoAlert.", flush=True)
 
 
+def rotations_acceptance(f, provider_dir):
+    with tempfile.TemporaryDirectory(prefix="goalert-provider-rotations-") as tmp:
+        directory = Path(tmp)
+        cli = directory / "development.tfrc"
+        cli.write_text('provider_installation {\n  dev_overrides {\n    "registry.terraform.io/healdropper/goalert" = '
+                       + json.dumps(str(provider_dir.resolve()).replace("\\", "/"))
+                       + '\n  }\n  direct { exclude = ["registry.terraform.io/healdropper/goalert"] }\n}\n')
+        env = dict(os.environ, TF_CLI_CONFIG_FILE=str(cli), GOALERT_ENDPOINT=f.url+"/api/graphql",
+                   GOALERT_API_KEY=f.token, TF_IN_AUTOMATION="1", CHECKPOINT_DISABLE="1")
+        for key in list(env):
+            if key.startswith("TF_CLI_ARGS") or key.startswith("TF_LOG") or key in ("TF_DATA_DIR", "TF_WORKSPACE"):
+                env.pop(key)
+
+        config = """
+terraform {
+  required_providers {
+    goalert = { source = "healdropper/goalert" }
+  }
+}
+provider "goalert" {}
+
+variable "rot_name" {
+  type = string
+}
+variable "rot_desc" {
+  type = string
+}
+variable "reorder" {
+  type    = bool
+  default = false
+}
+variable "step1_delay" {
+  type    = number
+  default = 15
+}
+
+resource "goalert_user" "alice" {
+  name     = "Alice Engineer"
+  email    = "alice.rotation@example.com"
+  role     = "user"
+  username = "alice-rotation"
+}
+
+resource "goalert_user" "bob" {
+  name     = "Bob SRE"
+  email    = "bob.rotation@example.com"
+  role     = "user"
+  username = "bob-rotation"
+}
+
+resource "goalert_rotation" "primary" {
+  name         = var.rot_name
+  description  = var.rot_desc
+  type         = "daily"
+  start_time   = "2026-10-01T08:00:00Z"
+  time_zone    = "Europe/Madrid"
+  shift_length = 1
+  user_ids     = var.reorder ? [goalert_user.bob.id, goalert_user.alice.id] : [goalert_user.alice.id, goalert_user.bob.id]
+}
+
+data "goalert_rotation" "by_id" {
+  id         = goalert_rotation.primary.id
+  depends_on = [goalert_rotation.primary]
+}
+
+data "goalert_rotation" "by_name" {
+  name       = var.rot_name
+  depends_on = [goalert_rotation.primary]
+}
+
+resource "goalert_escalation_policy" "with_targets" {
+  name        = "On-Call Multi-Target Policy"
+  description = "Escalates through operator, rotation, and webhook"
+  repeat      = 1
+
+  step {
+    delay_minutes = var.step1_delay
+    user_ids      = [goalert_user.alice.id]
+    webhook_action {
+      url = "https://example.com/alerts/step1"
+    }
+  }
+
+  step {
+    delay_minutes = 30
+    rotation_ids  = [goalert_rotation.primary.id]
+  }
+}
+
+output "ds_rot_tz" {
+  value = data.goalert_rotation.by_id.time_zone
+}
+
+output "ds_rot_id" {
+  value = data.goalert_rotation.by_name.id
+}
+"""
+        (directory/"main.tf").write_text(config)
+
+        def variables(name="Primary On-Call", desc="Initial rotation description", reorder=False, step1_delay=15):
+            (directory/"terraform.tfvars.json").write_text(json.dumps({
+                "rot_name": name,
+                "rot_desc": desc,
+                "reorder": reorder,
+                "step1_delay": step1_delay,
+            }))
+
+        def tf(*args, accepted=(0,), override=None):
+            return run(["terraform", *args], cwd=directory, env=override or env, accepted=accepted)
+
+        def plan(expected_changes):
+            tf("plan", "-input=false", "-no-color", "-out=plan.bin")
+            summary = json.loads(run(["terraform", "show", "-json", "plan.bin"], cwd=directory, env=env).stdout)
+            changes = [c for c in summary.get("resource_changes", []) if c.get("mode") == "managed" and c.get("change", {}).get("actions") != ["no-op"]]
+            assert len(changes) == expected_changes, f"expected {expected_changes} changes, got {len(changes)}"
+
+        def clean():
+            res = tf("plan", "-detailed-exitcode", "-no-color", accepted=(0,))
+            assert res.returncode == 0
+            (directory/"plan.bin").unlink(missing_ok=True)
+
+        def get_resource_values(address):
+            result = tf("show", "-json")
+            state = json.loads(result.stdout)
+            for res in state.get("values", {}).get("root_module", {}).get("resources", []):
+                if res.get("address") == address:
+                    return res.get("values", {})
+            return None
+
+        # 1. Initial creation (2 users, 1 rotation, 1 escalation policy: 4 resources)
+        variables("Primary On-Call", "Initial rotation description", reorder=False, step1_delay=15)
+        plan(4)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        alice_state = get_resource_values("goalert_user.alice")
+        bob_state = get_resource_values("goalert_user.bob")
+        rot_state = get_resource_values("goalert_rotation.primary")
+        ep_state = get_resource_values("goalert_escalation_policy.with_targets")
+        assert alice_state is not None, "missing alice state"
+        assert bob_state is not None, "missing bob state"
+        assert rot_state is not None, "missing rotation state"
+        assert ep_state is not None, "missing escalation policy state"
+
+        alice_id = alice_state["id"]
+        bob_id = bob_state["id"]
+        rot_id = rot_state["id"]
+        ep_id = ep_state["id"]
+
+        assert rot_state["name"] == "Primary On-Call"
+        assert rot_state["type"] == "daily"
+        assert rot_state["time_zone"] == "Europe/Madrid"
+        assert rot_state["user_ids"] == [alice_id, bob_id]
+
+        assert len(ep_state["step"]) == 2
+        assert ep_state["step"][0]["user_ids"] == [alice_id]
+        assert ep_state["step"][0]["webhook_action"][0]["url"] == "https://example.com/alerts/step1"
+        assert ep_state["step"][1]["rotation_ids"] == [rot_id]
+        print("PASS: initial creation of users, rotation, and multi-target policy verified.", flush=True)
+
+        # 2. Verify data sources
+        output_res = tf("output", "-json")
+        outputs = json.loads(output_res.stdout)
+        assert outputs["ds_rot_tz"]["value"] == "Europe/Madrid"
+        assert outputs["ds_rot_id"]["value"] == rot_id
+        print("PASS: data.goalert_rotation lookups by id and name verified.", flush=True)
+
+        # 3. In-place update (reorder participants and update step delay: 2 changes)
+        variables("Primary On-Call Reordered", "Updated rotation description", reorder=True, step1_delay=20)
+        plan(2)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        updated_rot = get_resource_values("goalert_rotation.primary")
+        updated_ep = get_resource_values("goalert_escalation_policy.with_targets")
+        assert updated_rot["id"] == rot_id, "rotation was unexpectedly replaced"
+        assert updated_rot["name"] == "Primary On-Call Reordered"
+        assert updated_rot["user_ids"] == [bob_id, alice_id]
+        assert updated_ep["id"] == ep_id, "escalation policy was unexpectedly replaced"
+        assert updated_ep["step"][0]["delay_minutes"] == 20
+        print("PASS: in-place participant reorder and policy step modification verified.", flush=True)
+
+        # 4. Drift detection and repair
+        f.graphql(operation="ProviderDeleteRotation", variables={"id": rot_id})
+        tf("apply", "-input=false", "-auto-approve", "-no-color")
+        clean()
+        recreated_rot = get_resource_values("goalert_rotation.primary")
+        recreated_rot_id = recreated_rot["id"]
+        assert recreated_rot_id != rot_id
+        assert recreated_rot["user_ids"] == [bob_id, alice_id]
+
+        reconciled_ep = get_resource_values("goalert_escalation_policy.with_targets")
+        assert reconciled_ep["step"][1]["rotation_ids"] == [recreated_rot_id]
+        print("PASS: external rotation deletion detected, recreated and escalation step reconciled.", flush=True)
+
+        # 5. Import verification
+        import_config = config + f"""
+resource "goalert_rotation" "imported_rot" {{
+  name         = "{recreated_rot['name']}"
+  description  = "{recreated_rot['description']}"
+  type         = "{recreated_rot['type']}"
+  start_time   = "{recreated_rot['start_time']}"
+  time_zone    = "{recreated_rot['time_zone']}"
+  shift_length = {recreated_rot['shift_length']}
+  user_ids     = ["{bob_id}", "{alice_id}"]
+}}
+"""
+        (directory/"main.tf").write_text(import_config)
+        tf("import", "goalert_rotation.imported_rot", recreated_rot_id)
+        imported_rot = get_resource_values("goalert_rotation.imported_rot")
+        assert imported_rot["id"] == recreated_rot_id
+        clean()
+        print("PASS: rotation imported successfully by UUID.", flush=True)
+
+        # 6. AST key migration test: v0.0.5 key rejected for rotation operations
+        before_state = (directory / "terraform.tfstate").read_bytes()
+        v005_document = (ROOT / "internal" / "client" / "operations.graphql").read_text().split("query ProviderReadRotation")[0]
+        v005_key = f.key("admin", document=v005_document)
+        bad_key_env = dict(env, GOALERT_API_KEY=v005_key)
+        v005_result = tf("plan", "-input=false", "-no-color", accepted=(1,), override=bad_key_env)
+        v005_out = v005_result.stdout + v005_result.stderr
+        assert any(expected in v005_out for expected in [
+            "wrong query for API key",
+            "API key document mismatch",
+            "HTTP status 422",
+        ])
+        assert (directory / "terraform.tfstate").read_bytes() == before_state
+        print("PASS: old v0.0.5 API key rejected by GoAlert AST hash validation for rotation operations.", flush=True)
+
+        # 7. Clean destroy
+        tf("destroy", "-input=false", "-auto-approve", "-no-color")
+        clean_after = f.graphql(operation="ProviderReadRotation", variables={"id": recreated_rot_id}, raw=True)
+        assert clean_after.get("data", {}).get("rotation") is None
+        print("PASS: clean teardown destroys rotation and target policies on remote GoAlert.", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider-dir", type=Path, default=ROOT/"bin")
     parser.add_argument("--config-template", type=Path)
-    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005"], default="all")
+    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005", "rotations"], default="all")
     args = parser.parse_args()
     with disposable() as fixture:
         if args.suite in ("all", "poc"):
@@ -1105,3 +1341,5 @@ if __name__ == "__main__":
             v004_acceptance(fixture, args.provider_dir)
         if args.suite in ("all", "v005"):
             v005_acceptance(fixture, args.provider_dir)
+        if args.suite in ("all", "rotations"):
+            rotations_acceptance(fixture, args.provider_dir)
