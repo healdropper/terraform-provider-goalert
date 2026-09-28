@@ -26,17 +26,19 @@ Delivery milestones represent human-scoped goals and functional capability theme
   [PR #42](https://github.com/healdropper/terraform-provider-goalert/pull/42) on 2026-09-27.
   Resources: `goalert_user`, `goalert_user_contact_method`, `goalert_user_notification_rule`.
   Data sources: `goalert_user`. Closed on GitHub.
+- **Rotations and Escalation Targets**: [on-call shift rotations and escalation targets](milestones/rotations-and-escalation-targets.md), merged through
+  [PR #50](https://github.com/healdropper/terraform-provider-goalert/pull/50) and [PR #51](https://github.com/healdropper/terraform-provider-goalert/pull/51) on 2026-09-28.
+  Resources: `goalert_rotation`, extended `goalert_escalation_policy` step targets.
+  Data sources: `goalert_rotation`. Closed on GitHub.
 
 ## Active milestone
 
-- **Rotations and Escalation Targets**: [on-call shift rotations and escalation targets](milestones/rotations-and-escalation-targets.md).
-  - Scope: `goalert_rotation` resource, `data.goalert_rotation` data source, and expanding `goalert_escalation_policy` steps to target users and rotations.
-  - Tracking: [GitHub Milestone 6](https://github.com/healdropper/terraform-provider-goalert/milestone/6).
+- **Schedules and User Overrides**: [schedules, rules, overrides, and on-call notification rules](milestones/schedules-and-user-overrides.md).
+  - Scope: `goalert_schedule`, `goalert_schedule_rule`, `goalert_user_override`, `goalert_schedule_on_call_notification_rule`, and schedule data source.
+  - Tracking: [GitHub Milestone 7](https://github.com/healdropper/terraform-provider-goalert/milestone/7).
 
 ## Planned milestones (full API coverage & Registry launch)
 
-- **Schedules and User Overrides**:
-  - Scope: `goalert_schedule`, `goalert_schedule_rule`, `goalert_user_override`, `goalert_schedule_on_call_notification_rule`, and schedule data source.
 - **Collaboration Channels and System Limits**:
   - Scope: Slack/chat channel/user group data sources and `goalert_system_limit` resource.
 - **Registry Publication and GA**:
@@ -58,7 +60,7 @@ Board layout with Status columns.
 Additional views track active milestones and unassigned Backlog issues.
 Item closed and Pull request merged workflows report enabled.
 
-[Milestone: Rotations and Escalation Targets](https://github.com/healdropper/terraform-provider-goalert/milestone/6)
+[Milestone: Schedules and User Overrides](https://github.com/healdropper/terraform-provider-goalert/milestone/7)
 is the active delivery planning container.
 Its canonical record links readiness and dependencies across
 DISC, SPEC, IMPL, and VERIFY gates.
