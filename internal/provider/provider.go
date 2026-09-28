@@ -77,6 +77,7 @@ func (p *goalertProvider) Resources(context.Context) []func() resource.Resource 
 		NewScheduleResource,
 		NewScheduleRuleResource,
 		NewUserOverrideResource,
+		NewSystemLimitResource,
 	}
 }
 func (p *goalertProvider) DataSources(context.Context) []func() datasource.DataSource {
@@ -88,5 +89,7 @@ func (p *goalertProvider) DataSources(context.Context) []func() datasource.DataS
 		NewUserDataSource,
 		NewRotationDataSource,
 		NewScheduleDataSource,
+		NewSlackChannelDataSource,
+		NewSlackUserGroupDataSource,
 	}
 }

@@ -119,4 +119,91 @@ func TestDataSourcesMetadataAndSchema(t *testing.T) {
 			}
 		}
 	})
+	t.Run("rotation data source", func(t *testing.T) {
+		d := NewRotationDataSource()
+		mReq := datasource.MetadataRequest{ProviderTypeName: "goalert"}
+		mResp := datasource.MetadataResponse{}
+		d.Metadata(ctx, mReq, &mResp)
+		if mResp.TypeName != "goalert_rotation" {
+			t.Fatalf("expected goalert_rotation, got %s", mResp.TypeName)
+		}
+
+		sReq := datasource.SchemaRequest{}
+		sResp := datasource.SchemaResponse{}
+		d.Schema(ctx, sReq, &sResp)
+		if sResp.Diagnostics.HasError() {
+			t.Fatalf("unexpected schema diagnostics: %v", sResp.Diagnostics)
+		}
+		for _, attr := range []string{"id", "name", "description", "type", "start_time", "time_zone", "shift_length", "user_ids", "active_user_index"} {
+			if _, ok := sResp.Schema.Attributes[attr]; !ok {
+				t.Fatalf("missing attribute: %s", attr)
+			}
+		}
+	})
+
+	t.Run("schedule data source", func(t *testing.T) {
+		d := NewScheduleDataSource()
+		mReq := datasource.MetadataRequest{ProviderTypeName: "goalert"}
+		mResp := datasource.MetadataResponse{}
+		d.Metadata(ctx, mReq, &mResp)
+		if mResp.TypeName != "goalert_schedule" {
+			t.Fatalf("expected goalert_schedule, got %s", mResp.TypeName)
+		}
+
+		sReq := datasource.SchemaRequest{}
+		sResp := datasource.SchemaResponse{}
+		d.Schema(ctx, sReq, &sResp)
+		if sResp.Diagnostics.HasError() {
+			t.Fatalf("unexpected schema diagnostics: %v", sResp.Diagnostics)
+		}
+		for _, attr := range []string{"id", "name", "description", "time_zone"} {
+			if _, ok := sResp.Schema.Attributes[attr]; !ok {
+				t.Fatalf("missing attribute: %s", attr)
+			}
+		}
+	})
+
+	t.Run("slack channel data source", func(t *testing.T) {
+		d := NewSlackChannelDataSource()
+		mReq := datasource.MetadataRequest{ProviderTypeName: "goalert"}
+		mResp := datasource.MetadataResponse{}
+		d.Metadata(ctx, mReq, &mResp)
+		if mResp.TypeName != "goalert_slack_channel" {
+			t.Fatalf("expected goalert_slack_channel, got %s", mResp.TypeName)
+		}
+
+		sReq := datasource.SchemaRequest{}
+		sResp := datasource.SchemaResponse{}
+		d.Schema(ctx, sReq, &sResp)
+		if sResp.Diagnostics.HasError() {
+			t.Fatalf("unexpected schema diagnostics: %v", sResp.Diagnostics)
+		}
+		for _, attr := range []string{"id", "name", "team_id"} {
+			if _, ok := sResp.Schema.Attributes[attr]; !ok {
+				t.Fatalf("missing attribute: %s", attr)
+			}
+		}
+	})
+
+	t.Run("slack user group data source", func(t *testing.T) {
+		d := NewSlackUserGroupDataSource()
+		mReq := datasource.MetadataRequest{ProviderTypeName: "goalert"}
+		mResp := datasource.MetadataResponse{}
+		d.Metadata(ctx, mReq, &mResp)
+		if mResp.TypeName != "goalert_slack_user_group" {
+			t.Fatalf("expected goalert_slack_user_group, got %s", mResp.TypeName)
+		}
+
+		sReq := datasource.SchemaRequest{}
+		sResp := datasource.SchemaResponse{}
+		d.Schema(ctx, sReq, &sResp)
+		if sResp.Diagnostics.HasError() {
+			t.Fatalf("unexpected schema diagnostics: %v", sResp.Diagnostics)
+		}
+		for _, attr := range []string{"id", "name", "handle"} {
+			if _, ok := sResp.Schema.Attributes[attr]; !ok {
+				t.Fatalf("missing attribute: %s", attr)
+			}
+		}
+	})
 }
