@@ -354,3 +354,45 @@ mutation ProviderUpdateUserOverride($input: UpdateUserOverrideInput!) {
 mutation ProviderDeleteUserOverride($id: ID!) {
   deleteAll(input: [{type: userOverride, id: $id}])
 }
+query ProviderReadSystemLimits {
+  systemLimits {
+    id
+    value
+    description
+  }
+}
+mutation ProviderSetSystemLimits($input: [SystemLimitInput!]!) {
+  setSystemLimits(input: $input)
+}
+query ProviderSearchSlackChannels($search: String!) {
+  slackChannels(input: {search: $search, first: 50}) {
+    nodes {
+      id
+      name
+      teamID
+    }
+  }
+}
+query ProviderReadSlackChannel($id: ID!) {
+  slackChannel(id: $id) {
+    id
+    name
+    teamID
+  }
+}
+query ProviderSearchSlackUserGroups($search: String!) {
+  slackUserGroups(input: {search: $search, first: 50}) {
+    nodes {
+      id
+      name
+      handle
+    }
+  }
+}
+query ProviderReadSlackUserGroup($id: ID!) {
+  slackUserGroup(id: $id) {
+    id
+    name
+    handle
+  }
+}

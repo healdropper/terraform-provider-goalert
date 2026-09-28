@@ -1275,3 +1275,154 @@ func (c *Client) DeleteUserOverride(ctx context.Context, id string) error {
 	return nil
 }
 
+type SystemLimit struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+	Value       int64  `json:"value"`
+}
+
+type SystemLimitInput struct {
+	ID    string `json:"id"`
+	Value int64  `json:"value"`
+}
+
+func (c *Client) ReadSystemLimits(ctx context.Context) ([]SystemLimit, error) {
+	var result struct {
+		SystemLimits []SystemLimit `json:"systemLimits"`
+	}
+	if err := c.execute(ctx, "ProviderReadSystemLimits", nil, &result); err != nil {
+		return nil, err
+	}
+	return result.SystemLimits, nil
+}
+
+func (c *Client) ReadSystemLimit(ctx context.Context, id string) (*SystemLimit, error) {
+	limits, err := c.ReadSystemLimits(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, lim := range limits {
+		if lim.ID == id {
+			return &lim, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
+func (c *Client) SetSystemLimits(ctx context.Context, input []SystemLimitInput) error {
+	var result struct {
+		Success bool `json:"setSystemLimits"`
+	}
+	if err := c.execute(ctx, "ProviderSetSystemLimits", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("set system limits: API did not confirm success")
+	}
+	return nil
+}
+
+type SlackChannel struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	TeamID string `json:"teamID"`
+}
+
+func slackChannelResult(raw json.RawMessage, allowMissing bool) (*SlackChannel, error) {
+	if bytes.Equal(raw, []byte("null")) && allowMissing {
+		return nil, ErrNotFound
+	}
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, errors.New("missing slack channel result")
+	}
+	var sc SlackChannel
+	if err := json.Unmarshal(raw, &sc); err != nil {
+		return nil, errors.New("malformed slack channel result")
+	}
+	if sc.ID == "" {
+		return nil, errors.New("incomplete slack channel result")
+	}
+	return &sc, nil
+}
+
+func (c *Client) ReadSlackChannel(ctx context.Context, id string) (*SlackChannel, error) {
+	var result struct {
+		SlackChannel json.RawMessage `json:"slackChannel"`
+	}
+	if err := c.execute(ctx, "ProviderReadSlackChannel", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	sc, err := slackChannelResult(result.SlackChannel, true)
+	if err != nil {
+		return nil, fmt.Errorf("read slack channel: %w", err)
+	}
+	if sc.ID != id {
+		return nil, errors.New("read slack channel: response ID differs from requested ID")
+	}
+	return sc, nil
+}
+
+func (c *Client) SearchSlackChannels(ctx context.Context, search string) ([]SlackChannel, error) {
+	var result struct {
+		SlackChannels struct {
+			Nodes []SlackChannel `json:"nodes"`
+		} `json:"slackChannels"`
+	}
+	if err := c.execute(ctx, "ProviderSearchSlackChannels", map[string]string{"search": search}, &result); err != nil {
+		return nil, err
+	}
+	return result.SlackChannels.Nodes, nil
+}
+
+type SlackUserGroup struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Handle string `json:"handle"`
+}
+
+func slackUserGroupResult(raw json.RawMessage, allowMissing bool) (*SlackUserGroup, error) {
+	if bytes.Equal(raw, []byte("null")) && allowMissing {
+		return nil, ErrNotFound
+	}
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, errors.New("missing slack user group result")
+	}
+	var sug SlackUserGroup
+	if err := json.Unmarshal(raw, &sug); err != nil {
+		return nil, errors.New("malformed slack user group result")
+	}
+	if sug.ID == "" {
+		return nil, errors.New("incomplete slack user group result")
+	}
+	return &sug, nil
+}
+
+func (c *Client) ReadSlackUserGroup(ctx context.Context, id string) (*SlackUserGroup, error) {
+	var result struct {
+		SlackUserGroup json.RawMessage `json:"slackUserGroup"`
+	}
+	if err := c.execute(ctx, "ProviderReadSlackUserGroup", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	sug, err := slackUserGroupResult(result.SlackUserGroup, true)
+	if err != nil {
+		return nil, fmt.Errorf("read slack user group: %w", err)
+	}
+	if sug.ID != id {
+		return nil, errors.New("read slack user group: response ID differs from requested ID")
+	}
+	return sug, nil
+}
+
+func (c *Client) SearchSlackUserGroups(ctx context.Context, search string) ([]SlackUserGroup, error) {
+	var result struct {
+		SlackUserGroups struct {
+			Nodes []SlackUserGroup `json:"nodes"`
+		} `json:"slackUserGroups"`
+	}
+	if err := c.execute(ctx, "ProviderSearchSlackUserGroups", map[string]string{"search": search}, &result); err != nil {
+		return nil, err
+	}
+	return result.SlackUserGroups.Nodes, nil
+}
+
