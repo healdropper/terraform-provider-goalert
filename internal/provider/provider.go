@@ -74,6 +74,9 @@ func (p *goalertProvider) Resources(context.Context) []func() resource.Resource 
 		NewUserContactMethodResource,
 		NewUserNotificationRuleResource,
 		NewRotationResource,
+		NewScheduleResource,
+		NewScheduleRuleResource,
+		NewUserOverrideResource,
 	}
 }
 func (p *goalertProvider) DataSources(context.Context) []func() datasource.DataSource {
@@ -84,5 +87,6 @@ func (p *goalertProvider) DataSources(context.Context) []func() datasource.DataS
 		NewHeartbeatMonitorDataSource,
 		NewUserDataSource,
 		NewRotationDataSource,
+		NewScheduleDataSource,
 	}
 }

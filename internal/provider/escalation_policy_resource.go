@@ -43,6 +43,7 @@ type stepModel struct {
 	DelayMinutes   types.Int64          `tfsdk:"delay_minutes"`
 	UserIDs        []types.String       `tfsdk:"user_ids"`
 	RotationIDs    []types.String       `tfsdk:"rotation_ids"`
+	ScheduleIDs    []types.String       `tfsdk:"schedule_ids"`
 	WebhookActions []webhookActionModel `tfsdk:"webhook_action"`
 }
 
@@ -123,6 +124,11 @@ func (r *escalationPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 							Optional:            true,
 							MarkdownDescription: "List of rotation IDs to target in this escalation step.",
 						},
+						"schedule_ids": schema.ListAttribute{
+							ElementType:         types.StringType,
+							Optional:            true,
+							MarkdownDescription: "List of schedule IDs to target in this escalation step.",
+						},
 					},
 					Blocks: map[string]schema.Block{
 						"webhook_action": schema.ListNestedBlock{
@@ -197,6 +203,7 @@ func modelFromEscalationPolicy(ep *client.EscalationPolicy, prior *escalationPol
 		var webhookActions []webhookActionModel
 		var userIDs []types.String
 		var rotationIDs []types.String
+		var scheduleIDs []types.String
 		for _, action := range step.Actions {
 			switch action.Type {
 			case "builtin-webhook":
@@ -214,6 +221,10 @@ func modelFromEscalationPolicy(ep *client.EscalationPolicy, prior *escalationPol
 			case "builtin-rotation":
 				if rid, ok := action.Args["rotation_id"]; ok && rid != "" {
 					rotationIDs = append(rotationIDs, types.StringValue(rid))
+				}
+			case "builtin-schedule":
+				if sid, ok := action.Args["schedule_id"]; ok && sid != "" {
+					scheduleIDs = append(scheduleIDs, types.StringValue(sid))
 				}
 			}
 		}
@@ -248,6 +259,16 @@ func modelFromEscalationPolicy(ep *client.EscalationPolicy, prior *escalationPol
 			sm.RotationIDs = rotationIDs
 		}
 
+		if len(scheduleIDs) == 0 {
+			if priorStep != nil && priorStep.ScheduleIDs != nil && len(priorStep.ScheduleIDs) == 0 {
+				sm.ScheduleIDs = []types.String{}
+			} else {
+				sm.ScheduleIDs = nil
+			}
+		} else {
+			sm.ScheduleIDs = scheduleIDs
+		}
+
 		m.Steps[i] = sm
 	}
 
@@ -278,8 +299,8 @@ func (r *escalationPolicyResource) Create(ctx context.Context, req resource.Crea
 	if len(plan.Steps) > 0 {
 		input.Steps = make([]client.CreateEscalationPolicyStepInput, len(plan.Steps))
 		for i, s := range plan.Steps {
-			if len(s.WebhookActions) == 0 && len(s.UserIDs) == 0 && len(s.RotationIDs) == 0 {
-				resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf("step %d must specify at least one target (user_ids, rotation_ids) or webhook_action", i))
+			if len(s.WebhookActions) == 0 && len(s.UserIDs) == 0 && len(s.RotationIDs) == 0 && len(s.ScheduleIDs) == 0 {
+				resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf("step %d must specify at least one target (user_ids, rotation_ids, schedule_ids) or webhook_action", i))
 				return
 			}
 			stepInput := client.CreateEscalationPolicyStepInput{
@@ -299,6 +320,14 @@ func (r *escalationPolicyResource) Create(ctx context.Context, req resource.Crea
 					Type: "builtin-rotation",
 					Args: map[string]string{
 						"rotation_id": rid.ValueString(),
+					},
+				})
+			}
+			for _, sid := range s.ScheduleIDs {
+				actions = append(actions, client.DestinationInput{
+					Type: "builtin-schedule",
+					Args: map[string]string{
+						"schedule_id": sid.ValueString(),
 					},
 				})
 			}
@@ -375,6 +404,7 @@ func stepMatches(serverStep client.EscalationPolicyStep, planStep stepModel) boo
 	}
 	var serverUsers []string
 	var serverRotations []string
+	var serverSchedules []string
 	for _, a := range serverStep.Actions {
 		switch a.Type {
 		case "builtin-user":
@@ -384,6 +414,10 @@ func stepMatches(serverStep client.EscalationPolicyStep, planStep stepModel) boo
 		case "builtin-rotation":
 			if rid, ok := a.Args["rotation_id"]; ok && rid != "" {
 				serverRotations = append(serverRotations, rid)
+			}
+		case "builtin-schedule":
+			if sid, ok := a.Args["schedule_id"]; ok && sid != "" {
+				serverSchedules = append(serverSchedules, sid)
 			}
 		}
 	}
@@ -402,6 +436,15 @@ func stepMatches(serverStep client.EscalationPolicyStep, planStep stepModel) boo
 	}
 	for i := range planStep.RotationIDs {
 		if serverRotations[i] != planStep.RotationIDs[i].ValueString() {
+			return false
+		}
+	}
+
+	if len(serverSchedules) != len(planStep.ScheduleIDs) {
+		return false
+	}
+	for i := range planStep.ScheduleIDs {
+		if serverSchedules[i] != planStep.ScheduleIDs[i].ValueString() {
 			return false
 		}
 	}
@@ -433,8 +476,8 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 
 	var stepIDs []string
 	for i, pStep := range plan.Steps {
-		if len(pStep.WebhookActions) == 0 && len(pStep.UserIDs) == 0 && len(pStep.RotationIDs) == 0 {
-			resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf("step %d must specify at least one target (user_ids, rotation_ids) or webhook_action", i))
+		if len(pStep.WebhookActions) == 0 && len(pStep.UserIDs) == 0 && len(pStep.RotationIDs) == 0 && len(pStep.ScheduleIDs) == 0 {
+			resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf("step %d must specify at least one target (user_ids, rotation_ids, schedule_ids) or webhook_action", i))
 			return
 		}
 
@@ -452,6 +495,14 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 				Type: "builtin-rotation",
 				Args: map[string]string{
 					"rotation_id": rid.ValueString(),
+				},
+			})
+		}
+		for _, sid := range pStep.ScheduleIDs {
+			actions = append(actions, client.DestinationInput{
+				Type: "builtin-schedule",
+				Args: map[string]string{
+					"schedule_id": sid.ValueString(),
 				},
 			})
 		}
