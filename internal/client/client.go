@@ -1025,3 +1025,253 @@ func (c *Client) DeleteRotation(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+type Schedule struct {
+	ID          string           `json:"id"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	TimeZone    string           `json:"timeZone"`
+	Targets     []ScheduleTarget `json:"targets"`
+}
+
+type ScheduleTarget struct {
+	Target TargetEntity   `json:"target"`
+	Rules  []ScheduleRule `json:"rules"`
+}
+
+type TargetEntity struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+type ScheduleRule struct {
+	ID            string `json:"id"`
+	Start         string `json:"start"`
+	End           string `json:"end"`
+	WeekdayFilter []bool `json:"weekdayFilter"`
+}
+
+type CreateScheduleInput struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+	TimeZone    string  `json:"timeZone"`
+}
+
+type UpdateScheduleInput struct {
+	ID          string  `json:"id"`
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+	TimeZone    *string `json:"timeZone,omitempty"`
+}
+
+type ScheduleTargetInput struct {
+	ScheduleID string              `json:"scheduleID"`
+	Target     TargetInput         `json:"target"`
+	Rules      []ScheduleRuleInput `json:"rules"`
+}
+
+type ScheduleRuleInput struct {
+	Start         string `json:"start"`
+	End           string `json:"end"`
+	WeekdayFilter []bool `json:"weekdayFilter"`
+}
+
+type UserOverride struct {
+	ID           string       `json:"id"`
+	Start        string       `json:"start"`
+	End          string       `json:"end"`
+	AddUserID    string       `json:"addUserID"`
+	RemoveUserID string       `json:"removeUserID"`
+	Target       TargetEntity `json:"target"`
+}
+
+type CreateUserOverrideInput struct {
+	ScheduleID   string  `json:"scheduleID"`
+	Start        string  `json:"start"`
+	End          string  `json:"end"`
+	AddUserID    *string `json:"addUserID,omitempty"`
+	RemoveUserID *string `json:"removeUserID,omitempty"`
+}
+
+type UpdateUserOverrideInput struct {
+	ID           string  `json:"id"`
+	Start        *string `json:"start,omitempty"`
+	End          *string `json:"end,omitempty"`
+	AddUserID    *string `json:"addUserID,omitempty"`
+	RemoveUserID *string `json:"removeUserID,omitempty"`
+}
+
+func scheduleResult(raw json.RawMessage, allowMissing bool) (*Schedule, error) {
+	if bytes.Equal(raw, []byte("null")) && allowMissing {
+		return nil, ErrNotFound
+	}
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, errors.New("missing schedule result")
+	}
+	var sched Schedule
+	if err := json.Unmarshal(raw, &sched); err != nil {
+		return nil, errors.New("malformed schedule result")
+	}
+	if sched.ID == "" || sched.Name == "" {
+		return nil, errors.New("incomplete schedule result")
+	}
+	return &sched, nil
+}
+
+func userOverrideResult(raw json.RawMessage, allowMissing bool) (*UserOverride, error) {
+	if bytes.Equal(raw, []byte("null")) && allowMissing {
+		return nil, ErrNotFound
+	}
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return nil, errors.New("missing user override result")
+	}
+	var uo UserOverride
+	if err := json.Unmarshal(raw, &uo); err != nil {
+		return nil, errors.New("malformed user override result")
+	}
+	if uo.ID == "" {
+		return nil, errors.New("incomplete user override result")
+	}
+	return &uo, nil
+}
+
+func (c *Client) ReadSchedule(ctx context.Context, id string) (*Schedule, error) {
+	var result struct {
+		Schedule json.RawMessage `json:"schedule"`
+	}
+	if err := c.execute(ctx, "ProviderReadSchedule", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	sched, err := scheduleResult(result.Schedule, true)
+	if err != nil {
+		return nil, fmt.Errorf("read schedule: %w", err)
+	}
+	if sched.ID != id {
+		return nil, errors.New("read schedule: response ID differs from requested ID")
+	}
+	return sched, nil
+}
+
+func (c *Client) SearchSchedules(ctx context.Context, search string) ([]Schedule, error) {
+	var result struct {
+		Schedules struct {
+			Nodes []Schedule `json:"nodes"`
+		} `json:"schedules"`
+	}
+	if err := c.execute(ctx, "ProviderSearchSchedules", map[string]string{"search": search}, &result); err != nil {
+		return nil, err
+	}
+	return result.Schedules.Nodes, nil
+}
+
+func (c *Client) CreateSchedule(ctx context.Context, input CreateScheduleInput) (*Schedule, error) {
+	var result struct {
+		Schedule json.RawMessage `json:"createSchedule"`
+	}
+	if err := c.execute(ctx, "ProviderCreateSchedule", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	sched, err := scheduleResult(result.Schedule, false)
+	if err != nil {
+		return nil, fmt.Errorf("create schedule: %w", err)
+	}
+	return sched, nil
+}
+
+func (c *Client) UpdateSchedule(ctx context.Context, input UpdateScheduleInput) error {
+	var result struct {
+		Success bool `json:"updateSchedule"`
+	}
+	if err := c.execute(ctx, "ProviderUpdateSchedule", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("update schedule: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) DeleteSchedule(ctx context.Context, id string) error {
+	var result struct {
+		Success bool `json:"deleteAll"`
+	}
+	if err := c.execute(ctx, "ProviderDeleteSchedule", map[string]string{"id": id}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("delete schedule: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) UpdateScheduleTarget(ctx context.Context, input ScheduleTargetInput) error {
+	var result struct {
+		Success bool `json:"updateScheduleTarget"`
+	}
+	if err := c.execute(ctx, "ProviderUpdateScheduleTarget", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("update schedule target: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) ReadUserOverride(ctx context.Context, id string) (*UserOverride, error) {
+	var result struct {
+		UserOverride json.RawMessage `json:"userOverride"`
+	}
+	if err := c.execute(ctx, "ProviderReadUserOverride", map[string]string{"id": id}, &result); err != nil {
+		return nil, err
+	}
+	uo, err := userOverrideResult(result.UserOverride, true)
+	if err != nil {
+		return nil, fmt.Errorf("read user override: %w", err)
+	}
+	if uo.ID != id {
+		return nil, errors.New("read user override: response ID differs from requested ID")
+	}
+	return uo, nil
+}
+
+func (c *Client) CreateUserOverride(ctx context.Context, input CreateUserOverrideInput) (*UserOverride, error) {
+	var result struct {
+		UserOverride json.RawMessage `json:"createUserOverride"`
+	}
+	if err := c.execute(ctx, "ProviderCreateUserOverride", map[string]any{"input": input}, &result); err != nil {
+		return nil, err
+	}
+	uo, err := userOverrideResult(result.UserOverride, false)
+	if err != nil {
+		return nil, fmt.Errorf("create user override: %w", err)
+	}
+	return uo, nil
+}
+
+func (c *Client) UpdateUserOverride(ctx context.Context, input UpdateUserOverrideInput) error {
+	var result struct {
+		Success bool `json:"updateUserOverride"`
+	}
+	if err := c.execute(ctx, "ProviderUpdateUserOverride", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("update user override: API did not confirm success")
+	}
+	return nil
+}
+
+func (c *Client) DeleteUserOverride(ctx context.Context, id string) error {
+	var result struct {
+		Success bool `json:"deleteAll"`
+	}
+	if err := c.execute(ctx, "ProviderDeleteUserOverride", map[string]string{"id": id}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("delete user override: API did not confirm success")
+	}
+	return nil
+}
+

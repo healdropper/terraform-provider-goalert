@@ -148,6 +148,7 @@ func TestStepMatchesWithTargets(t *testing.T) {
 		Actions: []client.Destination{
 			{Type: "builtin-user", Args: map[string]string{"user_id": "u1"}},
 			{Type: "builtin-rotation", Args: map[string]string{"rotation_id": "r1"}},
+			{Type: "builtin-schedule", Args: map[string]string{"schedule_id": "s1"}},
 			{Type: "builtin-webhook", Args: map[string]string{"webhook_url": "https://example.com/alert"}},
 		},
 	}
@@ -156,6 +157,7 @@ func TestStepMatchesWithTargets(t *testing.T) {
 		DelayMinutes: types.Int64Value(15),
 		UserIDs:      []types.String{types.StringValue("u1")},
 		RotationIDs:  []types.String{types.StringValue("r1")},
+		ScheduleIDs:  []types.String{types.StringValue("s1")},
 		WebhookActions: []webhookActionModel{
 			{URL: types.StringValue("https://example.com/alert")},
 		},
@@ -170,6 +172,9 @@ func TestStepMatchesWithTargets(t *testing.T) {
 	diffRotationPlan := matchingPlan
 	diffRotationPlan.RotationIDs = []types.String{types.StringValue("r2")}
 
+	diffSchedulePlan := matchingPlan
+	diffSchedulePlan.ScheduleIDs = []types.String{types.StringValue("s2")}
+
 	if !stepMatches(serverStep, matchingPlan) {
 		t.Error("expected matchingPlan to match step")
 	}
@@ -181,6 +186,9 @@ func TestStepMatchesWithTargets(t *testing.T) {
 	}
 	if stepMatches(serverStep, diffRotationPlan) {
 		t.Error("expected diffRotationPlan to not match")
+	}
+	if stepMatches(serverStep, diffSchedulePlan) {
+		t.Error("expected diffSchedulePlan to not match")
 	}
 }
 
@@ -196,6 +204,7 @@ func TestModelFromEscalationPolicyTargets(t *testing.T) {
 				Actions: []client.Destination{
 					{Type: "builtin-user", Args: map[string]string{"user_id": "user-uuid-1"}},
 					{Type: "builtin-rotation", Args: map[string]string{"rotation_id": "rotation-uuid-1"}},
+					{Type: "builtin-schedule", Args: map[string]string{"schedule_id": "schedule-uuid-1"}},
 					{Type: "builtin-webhook", Args: map[string]string{"webhook_url": "https://example.com"}},
 				},
 			},
@@ -212,6 +221,9 @@ func TestModelFromEscalationPolicyTargets(t *testing.T) {
 	}
 	if len(s.RotationIDs) != 1 || s.RotationIDs[0].ValueString() != "rotation-uuid-1" {
 		t.Errorf("expected rotation-uuid-1, got: %v", s.RotationIDs)
+	}
+	if len(s.ScheduleIDs) != 1 || s.ScheduleIDs[0].ValueString() != "schedule-uuid-1" {
+		t.Errorf("expected schedule-uuid-1, got: %v", s.ScheduleIDs)
 	}
 	if len(s.WebhookActions) != 1 || s.WebhookActions[0].URL.ValueString() != "https://example.com" {
 		t.Errorf("expected webhook action, got: %v", s.WebhookActions)
