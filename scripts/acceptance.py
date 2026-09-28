@@ -1595,11 +1595,176 @@ resource "goalert_user_override" "imported_uo" {{
         print("PASS: clean teardown destroys schedule, rules, and overrides on remote GoAlert.", flush=True)
 
 
+def system_limits_acceptance(f, provider_dir):
+    with tempfile.TemporaryDirectory(prefix="goalert-provider-limits-") as tmp:
+        directory = Path(tmp)
+        cli = directory / "development.tfrc"
+        cli.write_text('provider_installation {\n  dev_overrides {\n    "registry.terraform.io/healdropper/goalert" = '
+                       + json.dumps(str(provider_dir.resolve()).replace("\\", "/"))
+                       + '\n  }\n  direct { exclude = ["registry.terraform.io/healdropper/goalert"] }\n}\n')
+        env = dict(os.environ, TF_CLI_CONFIG_FILE=str(cli), GOALERT_ENDPOINT=f.url+"/api/graphql",
+                   GOALERT_API_KEY=f.token, TF_IN_AUTOMATION="1", CHECKPOINT_DISABLE="1")
+        for key in list(env):
+            if key.startswith("TF_CLI_ARGS") or key.startswith("TF_LOG") or key in ("TF_DATA_DIR", "TF_WORKSPACE"):
+                env.pop(key)
+
+        config = """
+terraform {
+  required_providers {
+    goalert = {
+      source = "healdropper/goalert"
+    }
+  }
+}
+
+provider "goalert" {
+  allow_insecure_http = true
+}
+
+variable "rules_val" {
+  type    = number
+  default = 40
+}
+
+variable "ep_steps_val" {
+  type    = number
+  default = 12
+}
+
+resource "goalert_system_limit" "rules_per_sched" {
+  id    = "RulesPerSchedule"
+  value = var.rules_val
+}
+
+resource "goalert_system_limit" "ep_steps" {
+  id    = "EPStepsPerPolicy"
+  value = var.ep_steps_val
+}
+"""
+        (directory/"main.tf").write_text(config)
+
+        def variables(rules=40, ep_steps=12):
+            (directory/"terraform.tfvars.json").write_text(json.dumps({
+                "rules_val": rules,
+                "ep_steps_val": ep_steps,
+            }))
+
+        def tf(*args, accepted=(0,), override=None):
+            return run(["terraform", *args], cwd=directory, env=override or env, accepted=accepted)
+
+        def plan(expected_changes):
+            tf("plan", "-input=false", "-no-color", "-out=plan.bin")
+            summary = json.loads(run(["terraform", "show", "-json", "plan.bin"], cwd=directory, env=env).stdout)
+            changes = [c for c in summary.get("resource_changes", []) if c.get("mode") == "managed" and c.get("change", {}).get("actions") != ["no-op"]]
+            assert len(changes) == expected_changes, f"expected {expected_changes} changes, got {len(changes)}"
+
+        def clean():
+            res = tf("plan", "-detailed-exitcode", "-no-color", accepted=(0,))
+            assert res.returncode == 0
+            (directory/"plan.bin").unlink(missing_ok=True)
+
+        def get_resource_values(address):
+            result = tf("show", "-json")
+            state = json.loads(result.stdout)
+            for res in state.get("values", {}).get("root_module", {}).get("resources", []):
+                if res.get("address") == address:
+                    return res.get("values", {})
+            return None
+
+        # 1. Initial creation (2 system limit resources)
+        variables(40, 12)
+        plan(2)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        rules_state = get_resource_values("goalert_system_limit.rules_per_sched")
+        ep_state = get_resource_values("goalert_system_limit.ep_steps")
+        assert rules_state["id"] == "RulesPerSchedule"
+        assert rules_state["value"] == 40
+        assert len(rules_state.get("description", "")) > 0
+        assert ep_state["id"] == "EPStepsPerPolicy"
+        assert ep_state["value"] == 12
+        assert len(ep_state.get("description", "")) > 0
+
+        # Verify on remote GoAlert via GraphQL
+        remote_limits = f.graphql(operation="ProviderReadSystemLimits", variables={})
+        limits_dict = {l["id"]: l["value"] for l in remote_limits.get("systemLimits", [])}
+        assert limits_dict["RulesPerSchedule"] == 40
+        assert limits_dict["EPStepsPerPolicy"] == 12
+        print("PASS: initial creation and configuration of system limits verified.", flush=True)
+
+        # 2. In-place update of system limit values
+        variables(45, 14)
+        plan(2)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        up_rules = get_resource_values("goalert_system_limit.rules_per_sched")
+        up_ep = get_resource_values("goalert_system_limit.ep_steps")
+        assert up_rules["value"] == 45
+        assert up_ep["value"] == 14
+        remote_limits = f.graphql(operation="ProviderReadSystemLimits", variables={})
+        limits_dict = {l["id"]: l["value"] for l in remote_limits.get("systemLimits", [])}
+        assert limits_dict["RulesPerSchedule"] == 45
+        assert limits_dict["EPStepsPerPolicy"] == 14
+        print("PASS: in-place update of system limits verified.", flush=True)
+
+        # 3. External drift detection and restoration
+        f.graphql(operation="ProviderSetSystemLimits", variables={"input": [{"id": "RulesPerSchedule", "value": 30}]})
+        tf("apply", "-input=false", "-auto-approve", "-no-color")
+        clean()
+
+        restored_rules = get_resource_values("goalert_system_limit.rules_per_sched")
+        assert restored_rules["value"] == 45
+        remote_limits = f.graphql(operation="ProviderReadSystemLimits", variables={})
+        limits_dict = {l["id"]: l["value"] for l in remote_limits.get("systemLimits", [])}
+        assert limits_dict["RulesPerSchedule"] == 45
+        print("PASS: external system limit drift detected and remediated.", flush=True)
+
+        # 4. Import verification
+        import_config = config + """
+resource "goalert_system_limit" "imported_rules" {
+  id    = "RulesPerSchedule"
+  value = 45
+}
+"""
+        (directory/"main.tf").write_text(import_config)
+        tf("import", "goalert_system_limit.imported_rules", "RulesPerSchedule")
+        clean()
+        imp_rules = get_resource_values("goalert_system_limit.imported_rules")
+        assert imp_rules["id"] == "RulesPerSchedule"
+        assert imp_rules["value"] == 45
+        print("PASS: system limit imported successfully.", flush=True)
+
+        # 5. AST key migration test: previous key rejected for system limit operations
+        before_state = (directory / "terraform.tfstate").read_bytes()
+        v007_document = (ROOT / "internal" / "client" / "operations.graphql").read_text().split("query ProviderReadSystemLimits")[0]
+        v007_key = f.key("admin", document=v007_document)
+        bad_key_env = dict(env, GOALERT_API_KEY=v007_key)
+        v007_result = tf("plan", "-input=false", "-no-color", accepted=(1,), override=bad_key_env)
+        v007_out = v007_result.stdout + v007_result.stderr
+        assert any(expected in v007_out for expected in [
+            "wrong query for API key",
+            "API key document mismatch",
+            "HTTP status 422",
+        ])
+        assert (directory / "terraform.tfstate").read_bytes() == before_state
+        print("PASS: old v0.0.7 API key rejected by GoAlert AST hash validation for system limits.", flush=True)
+
+        # 6. Clean destroy
+        tf("destroy", "-input=false", "-auto-approve", "-no-color")
+        # System limits are permanent in GoAlert; destroy cleanly removes them from TF state.
+        final_state = tf("show", "-json")
+        state_data = json.loads(final_state.stdout)
+        assert len(state_data.get("values", {}).get("root_module", {}).get("resources", [])) == 0
+        print("PASS: clean teardown removes system limits from Terraform state without error.", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider-dir", type=Path, default=ROOT/"bin")
     parser.add_argument("--config-template", type=Path)
-    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005", "rotations", "schedules"], default="all")
+    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005", "rotations", "schedules", "limits"], default="all")
     args = parser.parse_args()
     with disposable() as fixture:
         if args.suite in ("all", "poc"):
@@ -1618,3 +1783,5 @@ if __name__ == "__main__":
             rotations_acceptance(fixture, args.provider_dir)
         if args.suite in ("all", "schedules"):
             schedules_acceptance(fixture, args.provider_dir)
+        if args.suite in ("all", "limits"):
+            system_limits_acceptance(fixture, args.provider_dir)
