@@ -274,3 +274,83 @@ mutation ProviderUpdateRotation($input: UpdateRotationInput!) {
 mutation ProviderDeleteRotation($id: ID!) {
   deleteAll(input: [{type: rotation, id: $id}])
 }
+query ProviderReadSchedule($id: ID!) {
+  schedule(id: $id) {
+    id
+    name
+    description
+    timeZone
+    targets {
+      target {
+        id
+        name
+        type
+      }
+      rules {
+        id
+        start
+        end
+        weekdayFilter
+      }
+    }
+  }
+}
+query ProviderSearchSchedules($search: String!) {
+  schedules(input: {search: $search, first: 50}) {
+    nodes {
+      id
+      name
+      description
+      timeZone
+    }
+  }
+}
+mutation ProviderCreateSchedule($input: CreateScheduleInput!) {
+  createSchedule(input: $input) {
+    id
+    name
+    description
+    timeZone
+  }
+}
+mutation ProviderUpdateSchedule($input: UpdateScheduleInput!) {
+  updateSchedule(input: $input)
+}
+mutation ProviderDeleteSchedule($id: ID!) {
+  deleteAll(input: [{type: schedule, id: $id}])
+}
+mutation ProviderUpdateScheduleTarget($input: ScheduleTargetInput!) {
+  updateScheduleTarget(input: $input)
+}
+query ProviderReadUserOverride($id: ID!) {
+  userOverride(id: $id) {
+    id
+    start
+    end
+    addUserID
+    removeUserID
+    target {
+      id
+      type
+    }
+  }
+}
+mutation ProviderCreateUserOverride($input: CreateUserOverrideInput!) {
+  createUserOverride(input: $input) {
+    id
+    start
+    end
+    addUserID
+    removeUserID
+    target {
+      id
+      type
+    }
+  }
+}
+mutation ProviderUpdateUserOverride($input: UpdateUserOverrideInput!) {
+  updateUserOverride(input: $input)
+}
+mutation ProviderDeleteUserOverride($id: ID!) {
+  deleteAll(input: [{type: userOverride, id: $id}])
+}

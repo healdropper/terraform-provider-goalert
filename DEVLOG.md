@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-09-28 — Schedule, rule, override, and step destination implementation (Issue #54, Gate SCHED-IMPL)
+
+- Expanded canonical GraphQL document `internal/client/operations.graphql` with schedule operations: `ProviderCreateSchedule`, `ProviderReadSchedule`, `ProviderSearchSchedules`, `ProviderUpdateSchedule`, `ProviderDeleteSchedule`, `ProviderUpdateScheduleTarget`, `ProviderCreateUserOverride`, `ProviderReadUserOverride`, `ProviderUpdateUserOverride`, `ProviderDeleteUserOverride`.
+- Implemented type-safe client methods and data types in `internal/client/client.go` for schedules, rules, overrides, and error-safe unmarshaling.
+- Implemented `goalert_schedule` resource (`internal/provider/schedule_resource.go`) with IANA timezone validation and name pattern verification.
+- Implemented `goalert_schedule_rule` resource (`internal/provider/schedule_rule_resource.go`) supporting rotation/user target assignments with 24-hour clock time windows and 7-day weekday filters.
+- Implemented `goalert_user_override` resource (`internal/provider/user_override_resource.go`) supporting add/remove user shift substitutions with RFC3339 timestamps.
+- Implemented `goalert_schedule` data source (`internal/provider/schedule_data_source.go`) supporting lookup by UUID or exact name.
+- Extended `goalert_escalation_policy` (`internal/provider/escalation_policy_resource.go`) to support `schedule_ids` in `step` blocks, mapping directly to GoAlert `builtin-schedule` actions.
+- Registered all new resources and data sources in `internal/provider/provider.go`.
+- Added unit tests in `internal/provider/schedule_resource_test.go`, `internal/provider/schedule_rule_resource_test.go`, `internal/provider/user_override_resource_test.go`, and updated `internal/provider/escalation_policy_resource_test.go`.
+- Resolves [Issue #54](https://github.com/healdropper/terraform-provider-goalert/issues/54), unblocking SCHED-VERIFY (Issue #55).
+
 ## 2026-09-28 — Rotations and Escalation Targets verification and closure (Issue #46, Gate ROT-VERIFY)
 
 - Diagnosed GoAlert v0.35.0 GraphQL destination behavior: when configuring escalation policy steps, the modern `actions` array supersedes legacy `targets`. Passing targets separately caused `cty.ListVal` vs `null` inconsistencies after apply.
