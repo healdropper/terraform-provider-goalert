@@ -285,31 +285,32 @@ func (r *escalationPolicyResource) Create(ctx context.Context, req resource.Crea
 			stepInput := client.CreateEscalationPolicyStepInput{
 				DelayMinutes: s.DelayMinutes.ValueInt64(),
 			}
-			if len(s.WebhookActions) > 0 {
-				stepInput.Actions = make([]client.DestinationInput, len(s.WebhookActions))
-				for j, act := range s.WebhookActions {
-					stepInput.Actions[j] = client.DestinationInput{
-						Type: "builtin-webhook",
-						Args: map[string]string{
-							"webhook_url": act.URL.ValueString(),
-						},
-					}
-				}
-			}
-			var targets []client.TargetInput
+			var actions []client.DestinationInput
 			for _, uid := range s.UserIDs {
-				targets = append(targets, client.TargetInput{
-					ID:   uid.ValueString(),
-					Type: "user",
+				actions = append(actions, client.DestinationInput{
+					Type: "builtin-user",
+					Args: map[string]string{
+						"user_id": uid.ValueString(),
+					},
 				})
 			}
 			for _, rid := range s.RotationIDs {
-				targets = append(targets, client.TargetInput{
-					ID:   rid.ValueString(),
-					Type: "rotation",
+				actions = append(actions, client.DestinationInput{
+					Type: "builtin-rotation",
+					Args: map[string]string{
+						"rotation_id": rid.ValueString(),
+					},
 				})
 			}
-			stepInput.Targets = targets
+			for _, act := range s.WebhookActions {
+				actions = append(actions, client.DestinationInput{
+					Type: "builtin-webhook",
+					Args: map[string]string{
+						"webhook_url": act.URL.ValueString(),
+					},
+				})
+			}
+			stepInput.Actions = actions
 			input.Steps[i] = stepInput
 		}
 	}
@@ -438,25 +439,28 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 		}
 
 		var actions []client.DestinationInput
+		for _, uid := range pStep.UserIDs {
+			actions = append(actions, client.DestinationInput{
+				Type: "builtin-user",
+				Args: map[string]string{
+					"user_id": uid.ValueString(),
+				},
+			})
+		}
+		for _, rid := range pStep.RotationIDs {
+			actions = append(actions, client.DestinationInput{
+				Type: "builtin-rotation",
+				Args: map[string]string{
+					"rotation_id": rid.ValueString(),
+				},
+			})
+		}
 		for _, act := range pStep.WebhookActions {
 			actions = append(actions, client.DestinationInput{
 				Type: "builtin-webhook",
 				Args: map[string]string{
 					"webhook_url": act.URL.ValueString(),
 				},
-			})
-		}
-		var targets []client.TargetInput
-		for _, uid := range pStep.UserIDs {
-			targets = append(targets, client.TargetInput{
-				ID:   uid.ValueString(),
-				Type: "user",
-			})
-		}
-		for _, rid := range pStep.RotationIDs {
-			targets = append(targets, client.TargetInput{
-				ID:   rid.ValueString(),
-				Type: "rotation",
 			})
 		}
 
@@ -472,7 +476,6 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 				updateStepErr := r.client.UpdateEscalationPolicyStep(ctx, client.UpdateEscalationPolicyStepInput{
 					ID:           stepID,
 					DelayMinutes: &delay,
-					Targets:      targets,
 					Actions:      actions,
 				})
 				if updateStepErr != nil {
@@ -485,7 +488,6 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 			createdStep, createStepErr := r.client.CreateEscalationPolicyStep(ctx, client.CreateEscalationPolicyStepInput{
 				EscalationPolicyID: &policyID,
 				DelayMinutes:       pStep.DelayMinutes.ValueInt64(),
-				Targets:            targets,
 				Actions:            actions,
 			})
 			if createStepErr != nil {

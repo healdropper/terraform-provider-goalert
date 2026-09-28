@@ -1,5 +1,21 @@
 # Development log
 
+## 2026-09-28 — Rotations and Escalation Targets verification and closure (Issue #46, Gate ROT-VERIFY)
+
+- Diagnosed GoAlert v0.35.0 GraphQL destination behavior: when configuring escalation policy steps, the modern `actions` array supersedes legacy `targets`. Passing targets separately caused `cty.ListVal` vs `null` inconsistencies after apply.
+- Updated `internal/provider/escalation_policy_resource.go` to unify all step targets (`user_ids`, `rotation_ids`, and `webhook_action`) into the typed `Actions` destination list (`builtin-user`, `builtin-rotation`, `builtin-webhook`).
+- Fixed `ProviderSearchRotations` GraphQL query argument signature (`input: {search: $search, first: 50}`) in `internal/client/operations.graphql`.
+- Implemented and executed end-to-end acceptance test suite `rotations_acceptance` in `scripts/acceptance.py`:
+  1. Creation of users, rotation with daily shifts, and multi-target escalation policy.
+  2. Data source lookups for `data.goalert_rotation` by UUID and name.
+  3. In-place participant reordering and step delay updates.
+  4. Remote drift detection, rotation recreation, and automatic policy step reconciliation.
+  5. State import of `goalert_rotation` by UUID.
+  6. AST hash key migration validation (outdated v0.0.5 API key rejected with HTTP 422).
+  7. Clean remote destroy of rotation and escalation policy.
+- Verified 100% passing across unit test suite (`go test ./...`) and acceptance tests.
+- Resolves [Issue #46](https://github.com/healdropper/terraform-provider-goalert/issues/46), successfully completing Milestone 6 (`Rotations and Escalation Targets`).
+
 ## 2026-09-27 — Rotation resource, data source, and escalation step targets implementation (Issue #45, Gate ROT-IMPL)
 
 - Expanded canonical GraphQL document `internal/client/operations.graphql` with rotation operations: `ProviderCreateRotation`, `ProviderReadRotation`, `ProviderSearchRotations`, `ProviderUpdateRotation`, `ProviderDeleteRotation`.
