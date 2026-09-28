@@ -30,17 +30,19 @@ Delivery milestones represent human-scoped goals and functional capability theme
   [PR #50](https://github.com/healdropper/terraform-provider-goalert/pull/50) and [PR #51](https://github.com/healdropper/terraform-provider-goalert/pull/51) on 2026-09-28.
   Resources: `goalert_rotation`, extended `goalert_escalation_policy` step targets.
   Data sources: `goalert_rotation`. Closed on GitHub.
+- **Schedules and User Overrides**: [schedules, rules, overrides, and on-call notification rules](milestones/schedules-and-user-overrides.md), merged through
+  [PR #59](https://github.com/healdropper/terraform-provider-goalert/pull/59) and [PR #60](https://github.com/healdropper/terraform-provider-goalert/pull/60) on 2026-09-28.
+  Resources: `goalert_schedule`, `goalert_schedule_rule`, `goalert_user_override`, extended `goalert_escalation_policy` step targets (`schedule_ids`).
+  Data sources: `goalert_schedule`. Closed on GitHub.
 
 ## Active milestone
 
-- **Schedules and User Overrides**: [schedules, rules, overrides, and on-call notification rules](milestones/schedules-and-user-overrides.md).
-  - Scope: `goalert_schedule`, `goalert_schedule_rule`, `goalert_user_override`, `goalert_schedule_on_call_notification_rule`, and schedule data source.
-  - Tracking: [GitHub Milestone 7](https://github.com/healdropper/terraform-provider-goalert/milestone/7).
+- **Collaboration Channels and System Limits**: [collaboration channels and system limits](milestones/collaboration-channels-and-system-limits.md).
+  - Scope: `goalert_system_limit` resource, and Slack/chat channel/user group data sources.
+  - Tracking: [GitHub Milestone 8](https://github.com/healdropper/terraform-provider-goalert/milestone/8).
 
 ## Planned milestones (full API coverage & Registry launch)
 
-- **Collaboration Channels and System Limits**:
-  - Scope: Slack/chat channel/user group data sources and `goalert_system_limit` resource.
 - **Registry Publication and GA**:
   - Scope: `tfplugindocs` pipeline integration, GPG signing identity setup, public repository transition, registry publication, and production consumer adoption.
 
@@ -60,7 +62,7 @@ Board layout with Status columns.
 Additional views track active milestones and unassigned Backlog issues.
 Item closed and Pull request merged workflows report enabled.
 
-[Milestone: Schedules and User Overrides](https://github.com/healdropper/terraform-provider-goalert/milestone/7)
+[Milestone: Collaboration Channels and System Limits](https://github.com/healdropper/terraform-provider-goalert/milestone/8)
 is the active delivery planning container.
 Its canonical record links readiness and dependencies across
 DISC, SPEC, IMPL, and VERIFY gates.
