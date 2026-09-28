@@ -241,7 +241,7 @@ query ProviderReadRotation($id: ID!) {
   }
 }
 query ProviderSearchRotations($search: String!) {
-  rotations(search: $search, first: 50) {
+  rotations(input: {search: $search, first: 50}) {
     nodes {
       id
       name
