@@ -35,13 +35,13 @@ Delivery milestones represent human-scoped goals and functional capability theme
   Resources: `goalert_schedule`, `goalert_schedule_rule`, `goalert_user_override`, extended `goalert_escalation_policy` step targets (`schedule_ids`).
   Data sources: `goalert_schedule`. Closed on GitHub.
 
+- **Collaboration Channels and System Limits**: [collaboration channels and system limits](milestones/collaboration-channels-and-system-limits.md), merged through
+  [PR #68](https://github.com/healdropper/terraform-provider-goalert/pull/68) and [PR #69](https://github.com/healdropper/terraform-provider-goalert/pull/69) on 2026-09-28.
+  Resources: `goalert_system_limit`.
+  Data sources: `goalert_slack_channel`, `goalert_slack_user_group`.
+  Closed on GitHub.
+
 ## Active milestone
-
-- **Collaboration Channels and System Limits**: [collaboration channels and system limits](milestones/collaboration-channels-and-system-limits.md).
-  - Scope: `goalert_system_limit` resource, and Slack/chat channel/user group data sources.
-  - Tracking: [GitHub Milestone 8](https://github.com/healdropper/terraform-provider-goalert/milestone/8).
-
-## Planned milestones (full API coverage & Registry launch)
 
 - **Registry Publication and GA**:
   - Scope: `tfplugindocs` pipeline integration, GPG signing identity setup, public repository transition, registry publication, and production consumer adoption.
