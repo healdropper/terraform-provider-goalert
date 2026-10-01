@@ -70,6 +70,7 @@ func (p *goalertProvider) Resources(context.Context) []func() resource.Resource 
 		NewIntegrationKeyResource,
 		NewHeartbeatMonitorResource,
 		NewServiceLabelResource,
+		NewLabelResource,
 		NewUserResource,
 		NewUserContactMethodResource,
 		NewUserNotificationRuleResource,

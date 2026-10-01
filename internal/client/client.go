@@ -52,6 +52,7 @@ type EscalationPolicyStep struct {
 	ID           string        `json:"id"`
 	StepNumber   int64         `json:"stepNumber"`
 	DelayMinutes int64         `json:"delayMinutes"`
+	MultiAck     bool          `json:"multiAck"`
 	Actions      []Destination `json:"actions"`
 }
 
@@ -70,6 +71,7 @@ type CreateEscalationPolicyInput struct {
 type CreateEscalationPolicyStepInput struct {
 	EscalationPolicyID *string            `json:"escalationPolicyID,omitempty"`
 	DelayMinutes       int64              `json:"delayMinutes"`
+	MultiAck           *bool              `json:"multiAck,omitempty"`
 	Targets            []TargetInput      `json:"targets,omitempty"`
 	Actions            []DestinationInput `json:"actions,omitempty"`
 }
@@ -85,6 +87,7 @@ type UpdateEscalationPolicyInput struct {
 type UpdateEscalationPolicyStepInput struct {
 	ID           string             `json:"id"`
 	DelayMinutes *int64             `json:"delayMinutes,omitempty"`
+	MultiAck     *bool              `json:"multiAck,omitempty"`
 	Targets      []TargetInput      `json:"targets,omitempty"`
 	Actions      []DestinationInput `json:"actions,omitempty"`
 }
@@ -564,9 +567,28 @@ func (c *Client) DeleteHeartbeatMonitor(ctx context.Context, id string) error {
 	return nil
 }
 
-func (c *Client) SetServiceLabel(ctx context.Context, serviceID, key, value string) error {
+func normalizeLabelTargetType(targetType string) (string, error) {
+	switch targetType {
+	case "service":
+		return "service", nil
+	case "escalation_policy", "escalationPolicy":
+		return "escalationPolicy", nil
+	case "schedule":
+		return "schedule", nil
+	case "rotation":
+		return "rotation", nil
+	default:
+		return "", fmt.Errorf("unsupported label target type %q", targetType)
+	}
+}
+
+func (c *Client) SetLabel(ctx context.Context, targetType, targetID, key, value string) error {
+	gqlType, err := normalizeLabelTargetType(targetType)
+	if err != nil {
+		return err
+	}
 	input := SetLabelInput{
-		Target: TargetInput{ID: serviceID, Type: "service"},
+		Target: TargetInput{ID: targetID, Type: gqlType},
 		Key:    key,
 		Value:  value,
 	}
@@ -577,9 +599,13 @@ func (c *Client) SetServiceLabel(ctx context.Context, serviceID, key, value stri
 		return err
 	}
 	if !result.Success {
-		return errors.New("set service label: API did not confirm success")
+		return errors.New("set label: API did not confirm success")
 	}
 	return nil
+}
+
+func (c *Client) SetServiceLabel(ctx context.Context, serviceID, key, value string) error {
+	return c.SetLabel(ctx, "service", serviceID, key, value)
 }
 
 func (c *Client) ReadServiceLabels(ctx context.Context, serviceID string) (map[string]string, error) {
@@ -600,6 +626,73 @@ func (c *Client) ReadServiceLabels(ctx context.Context, serviceID string) (map[s
 		labels[l.Key] = l.Value
 	}
 	return labels, nil
+}
+
+func (c *Client) ReadTargetLabels(ctx context.Context, targetType, targetID string) (map[string]string, error) {
+	gqlType, err := normalizeLabelTargetType(targetType)
+	if err != nil {
+		return nil, err
+	}
+	switch gqlType {
+	case "service":
+		return c.ReadServiceLabels(ctx, targetID)
+	case "escalationPolicy":
+		var result struct {
+			EscalationPolicy *struct {
+				ID     string         `json:"id"`
+				Labels []ServiceLabel `json:"labels"`
+			} `json:"escalationPolicy"`
+		}
+		if err := c.execute(ctx, "ProviderReadEscalationPolicyLabels", map[string]string{"id": targetID}, &result); err != nil {
+			return nil, err
+		}
+		if result.EscalationPolicy == nil {
+			return nil, ErrNotFound
+		}
+		labels := make(map[string]string, len(result.EscalationPolicy.Labels))
+		for _, l := range result.EscalationPolicy.Labels {
+			labels[l.Key] = l.Value
+		}
+		return labels, nil
+	case "schedule":
+		var result struct {
+			Schedule *struct {
+				ID     string         `json:"id"`
+				Labels []ServiceLabel `json:"labels"`
+			} `json:"schedule"`
+		}
+		if err := c.execute(ctx, "ProviderReadScheduleLabels", map[string]string{"id": targetID}, &result); err != nil {
+			return nil, err
+		}
+		if result.Schedule == nil {
+			return nil, ErrNotFound
+		}
+		labels := make(map[string]string, len(result.Schedule.Labels))
+		for _, l := range result.Schedule.Labels {
+			labels[l.Key] = l.Value
+		}
+		return labels, nil
+	case "rotation":
+		var result struct {
+			Rotation *struct {
+				ID     string         `json:"id"`
+				Labels []ServiceLabel `json:"labels"`
+			} `json:"rotation"`
+		}
+		if err := c.execute(ctx, "ProviderReadRotationLabels", map[string]string{"id": targetID}, &result); err != nil {
+			return nil, err
+		}
+		if result.Rotation == nil {
+			return nil, ErrNotFound
+		}
+		labels := make(map[string]string, len(result.Rotation.Labels))
+		for _, l := range result.Rotation.Labels {
+			labels[l.Key] = l.Value
+		}
+		return labels, nil
+	default:
+		return nil, fmt.Errorf("unsupported label target type %q", targetType)
+	}
 }
 
 func (c *Client) SearchServices(ctx context.Context, search string) ([]Service, error) {
@@ -649,10 +742,12 @@ type UpdateUserInput struct {
 }
 
 type UserContactMethod struct {
-	ID          string      `json:"id"`
-	Name        string      `json:"name"`
-	Disabled    bool        `json:"disabled"`
-	Destination Destination `json:"dest"`
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Disabled      bool        `json:"disabled"`
+	Private       bool        `json:"private"`
+	StatusUpdates string      `json:"statusUpdates"`
+	Destination   Destination `json:"dest"`
 }
 
 func (cm *UserContactMethod) Value() string {
@@ -694,15 +789,20 @@ func (cm *UserContactMethod) Type() string {
 }
 
 type CreateUserContactMethodInput struct {
-	UserID string `json:"userID"`
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	Value  string `json:"value"`
+	UserID              string `json:"userID"`
+	Name                string `json:"name"`
+	Type                string `json:"type"`
+	Value               string `json:"value"`
+	EnableStatusUpdates *bool  `json:"enableStatusUpdates,omitempty"`
+	Private             *bool  `json:"private,omitempty"`
 }
 
 type UpdateUserContactMethodInput struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID                  string  `json:"id"`
+	Name                string  `json:"name"`
+	Value               *string `json:"value,omitempty"`
+	EnableStatusUpdates *bool   `json:"enableStatusUpdates,omitempty"`
+	Private             *bool   `json:"private,omitempty"`
 }
 
 type UserNotificationRule struct {

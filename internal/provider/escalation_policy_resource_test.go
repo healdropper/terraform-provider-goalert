@@ -145,6 +145,7 @@ func TestStepMatchesWithTargets(t *testing.T) {
 	serverStep := client.EscalationPolicyStep{
 		ID:           "step-1",
 		DelayMinutes: 15,
+		MultiAck:     true,
 		Actions: []client.Destination{
 			{Type: "builtin-user", Args: map[string]string{"user_id": "u1"}},
 			{Type: "builtin-rotation", Args: map[string]string{"rotation_id": "r1"}},
@@ -155,6 +156,7 @@ func TestStepMatchesWithTargets(t *testing.T) {
 
 	matchingPlan := stepModel{
 		DelayMinutes: types.Int64Value(15),
+		MultiAck:     types.BoolValue(true),
 		UserIDs:      []types.String{types.StringValue("u1")},
 		RotationIDs:  []types.String{types.StringValue("r1")},
 		ScheduleIDs:  []types.String{types.StringValue("s1")},
@@ -165,6 +167,9 @@ func TestStepMatchesWithTargets(t *testing.T) {
 
 	diffDelayPlan := matchingPlan
 	diffDelayPlan.DelayMinutes = types.Int64Value(20)
+
+	diffMultiAckPlan := matchingPlan
+	diffMultiAckPlan.MultiAck = types.BoolValue(false)
 
 	diffUserPlan := matchingPlan
 	diffUserPlan.UserIDs = []types.String{types.StringValue("u2")}
@@ -180,6 +185,9 @@ func TestStepMatchesWithTargets(t *testing.T) {
 	}
 	if stepMatches(serverStep, diffDelayPlan) {
 		t.Error("expected diffDelayPlan to not match")
+	}
+	if stepMatches(serverStep, diffMultiAckPlan) {
+		t.Error("expected diffMultiAckPlan to not match")
 	}
 	if stepMatches(serverStep, diffUserPlan) {
 		t.Error("expected diffUserPlan to not match")
@@ -201,6 +209,7 @@ func TestModelFromEscalationPolicyTargets(t *testing.T) {
 				ID:           "s-1",
 				StepNumber:   0,
 				DelayMinutes: 15,
+				MultiAck:     true,
 				Actions: []client.Destination{
 					{Type: "builtin-user", Args: map[string]string{"user_id": "user-uuid-1"}},
 					{Type: "builtin-rotation", Args: map[string]string{"rotation_id": "rotation-uuid-1"}},
@@ -216,6 +225,9 @@ func TestModelFromEscalationPolicyTargets(t *testing.T) {
 		t.Fatalf("expected 1 step, got %d", len(m.Steps))
 	}
 	s := m.Steps[0]
+	if !s.MultiAck.ValueBool() {
+		t.Errorf("expected MultiAck true, got false")
+	}
 	if len(s.UserIDs) != 1 || s.UserIDs[0].ValueString() != "user-uuid-1" {
 		t.Errorf("expected user-uuid-1, got: %v", s.UserIDs)
 	}
