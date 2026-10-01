@@ -29,6 +29,6 @@ Milestone 10 prepares and executes the public open-source exposure and **v1.0.0 
 | Gate | Issue | Current readiness |
 | --- | --- | --- |
 | GA-DISC | [#79: chore(ga): audit repository privacy, git history, Registry docs, and v1.0.0 release contract](https://github.com/healdropper/terraform-provider-goalert/issues/79) | Completed (`docs/research/public-release-and-registry-audit.md`) |
-| GA-SPEC | [#80: docs(ga): specify public repository governance, community files, and v1.0.0 release process](https://github.com/healdropper/terraform-provider-goalert/issues/80) | Ready |
-| GA-IMPL | [#81: feat(ga): sanitize private references, add governance files, and enable v1.0.0 release workflow](https://github.com/healdropper/terraform-provider-goalert/issues/81) | Pending SPEC |
+| GA-SPEC | [#80: docs(ga): specify public repository governance, community files, and v1.0.0 release process](https://github.com/healdropper/terraform-provider-goalert/issues/80) | Completed (`docs/specs/public-repository-governance.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.github/CODEOWNERS`) |
+| GA-IMPL | [#81: feat(ga): sanitize private references, add governance files, and enable v1.0.0 release workflow](https://github.com/healdropper/terraform-provider-goalert/issues/81) | Ready |
 | GA-VERIFY | [#82: release(ga): transition to public with main ruleset, publish signed v1.0.0 to Registry, and adopt in consumer](https://github.com/healdropper/terraform-provider-goalert/issues/82) | Pending IMPL |

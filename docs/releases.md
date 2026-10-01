@@ -1,34 +1,24 @@
-# Signed release preparation
+# Signed Releases & Terraform Registry Publication
 
-The first review milestone is **v0.0.1 candidate**. Do not infer a published
-release from source code, a snapshot package or a successful local test.
+`terraform-provider-goalert` publishes GPG-signed, semantic-versioned releases (`v1.0.0+`) for distribution through GitHub Releases and the public HashiCorp Terraform Registry (`registry.terraform.io/providers/healdropper/goalert`).
 
-## Release contract
+## Release Contract
 
-GoReleaser v2.18.2 produces ZIP files for Linux, Windows and macOS on amd64 and
-arm64. Binary names and archive names follow Terraform's provider conventions.
-Each package includes the license and canonical GraphQL operations. The
-protocol-6 Registry manifest is included in the SHA256 checksums, which receive
-a detached GPG signature.
+GoReleaser v2.18.2 produces cross-platform archives (`.zip`) for Linux, Windows, and macOS on `amd64` and `arm64`. Binary names and archive names follow HashiCorp Terraform provider conventions (`terraform-provider-goalert_<version>_<os>_<arch>.zip`). Each archive includes `LICENSE` and `internal/client/operations.graphql`. The Protocol v6 Registry manifest (`terraform-registry-manifest.json`) is included in `SHA256SUMS`, which receives a detached GPG signature (`SHA256SUMS.sig`).
 
-The Release workflow triggers only on `v0.0.x` tags. It checks that the tagged
-commit is reachable from main, reruns formatting, unit tests, vet and real
-acceptance tests, then signs packages and creates a **draft GitHub release**.
-It does not publish to the Terraform Registry or modify any consumer.
+The `.github/workflows/release.yml` workflow triggers on SemVer tags (`v*` matching `^v[0-9]+\.[0-9]+\.[0-9]+$`). It verifies that the tagged commit is an ancestor of `origin/main`, runs formatting, unit tests, `go vet`, and real disposable GoAlert v0.35.0 acceptance tests, and then executes the `package` job in the protected `release` environment to sign and publish a **draft GitHub Release**.
 
-Set up the GitHub `release` environment with the maintained signing identity:
+## Signing Identity (`release` Environment)
 
-- Secret `GPG_PRIVATE_KEY`: armored private signing key.
-- Secret `GPG_PASSPHRASE`: its passphrase.
-- Variable `GPG_FINGERPRINT`: the expected full public-key fingerprint.
+The GitHub `release` environment holds the dedicated RSA-4096 signing identity:
 
-No signing identity is generated or adopted implicitly. Store the recovery copy
-outside GitHub, publish the public key/fingerprint through a reviewed channel,
-and document expiration and rotation. The workflow checks the imported
-fingerprint and fails closed when material is missing. It only grants
-`contents: write` to the packaging job. Third-party actions are pinned to commits.
+- Secret `GPG_PRIVATE_KEY`: Armored private signing key.
+- Secret `GPG_PASSPHRASE`: Passphrase protecting the private signing key.
+- Variable `GPG_FINGERPRINT`: Expected full public-key fingerprint (`4C110F32FCEFCBE7A0662DFE8738CFE29D8E6C12`).
 
-## Local verification
+The corresponding public key is registered in the HashiCorp Terraform Registry under `@healdropper` (*User Settings -> Signing Keys*). The workflow verifies the imported fingerprint against `GPG_FINGERPRINT` before running GoReleaser and verifies `gpg --batch --verify dist/*_SHA256SUMS.sig dist/*_SHA256SUMS` before uploading release assets.
+
+## Local Verification
 
 ```console
 make check-format test vet build acceptance
@@ -36,40 +26,18 @@ make release-check
 make release-snapshot
 ```
 
-These require GoReleaser in PATH (or pass `GORELEASER=/absolute/path/goreleaser`).
-Snapshots skip publishing and signing; they are build verification artifacts,
-not trusted distribution releases. `make release-smoke` additionally verifies
-the configured GPG signing step with an ephemeral local test identity and never
-publishes or uploads that private key. Run this target on Linux (including CI);
-the Git-bundled GPG agent may not support native Windows IPC.
+`make release-smoke` (run on Linux/WSL or CI) additionally exercises the GoReleaser GPG signing step using an ephemeral test identity that is discarded immediately after verification.
 
-After a reviewed merge, tag the reviewed commit as `v0.0.1` and push that tag.
-Inspect the private draft's packages, manifest, checksum file and signature.
-Verify with the independently trusted public key:
+## Publishing a New Release (`v1.x.y`)
 
-```console
-gpg --verify terraform-provider-goalert_0.0.1_SHA256SUMS.sig terraform-provider-goalert_0.0.1_SHA256SUMS
-sha256sum --check terraform-provider-goalert_0.0.1_SHA256SUMS
-```
+1. Ensure the target commit is merged to `main` and all 5 `Integration` CI checks pass.
+2. Tag and push the semantic version from `main`:
+   ```console
+   git tag -a v1.0.0 -m "Release v1.0.0"
+   git push origin v1.0.0
+   ```
+3. Wait for the `Release` GitHub Actions workflow (`verify` -> `package`) to finish and produce the signed draft release.
+4. Verify the draft release assets (`12` platform `.zip` archives, `terraform-registry-manifest.json`, `SHA256SUMS`, `SHA256SUMS.sig`) and publish the GitHub Release (`gh release edit v1.0.0 --draft=false`).
+5. The HashiCorp Terraform Registry webhook automatically ingests the published release and renders the documentation under `docs/`.
 
-Then explicitly publish the private draft when ready. A release in a private
-repository is not a public Registry publication.
-
-## Three independent decisions
-
-1. **GitHub visibility:** review generic source, licensing, history and absence of
-   environment data before making the repository public.
-2. **Terraform Registry:** review signed, non-prerelease semantic-version assets,
-   protocol manifest, documentation and trusted signing key before registering
-   the public provider. Registry publication requires its own approval.
-3. **Production adoption:** confirm required resources, compatibility, auth/key
-   rotation, acceptance evidence and rollback; then propose an exact published
-   version and dependency locks in a separate consumer PR. Remove all
-   development overrides from that execution environment.
-
-Do not pin production to v0.0.1 merely because service tests pass. The first
-milestone requires an existing escalation policy; useful routing may require
-future resources for policy steps and integration keys. Propose the production
-version only when that scope and a signed distributable release are verified.
-
-Reference: [HashiCorp publishing requirements](https://developer.hashicorp.com/terraform/registry/providers/publishing).
+Reference: [HashiCorp Terraform Registry — Publishing Providers](https://developer.hashicorp.com/terraform/registry/providers/publishing).
