@@ -1,102 +1,87 @@
-# Terraform Provider for GoAlert
+# Terraform Provider for GoAlert (`healdropper/goalert`)
 
-A small Terraform Plugin Framework provider for self-hosted GoAlert.
-The first milestone, **v0.0.1 candidate**, manages `goalert_service`.
-The repository is private; no Registry publication or production adoption is implied.
+A [Terraform Plugin Framework](https://developer.hashicorp.com/terraform/plugin/framework) (Protocol v6) provider for declaratively managing self-hosted [GoAlert](https://goalert.me/) (`v0.35.0`) installations through GoAlert's GraphQL API.
 
 ```mermaid
 flowchart LR
     HCL[Terraform configuration] --> TF[Terraform CLI]
-    TF --> PF[Plugin Framework provider]
+    TF --> PF["healdropper/goalert (Plugin Framework v6)"]
     PF --> API[GoAlert GraphQL API]
     KEY[Expiring fixed-document API key] --> API
     DOC[Canonical named operations] --> KEY
     API --> PG[GoAlert PostgreSQL]
 ```
 
-## Prerequisites
+## Capabilities (`v1.0.0` GA — 100% GoAlert v0.35.0 Coverage)
 
-- Go 1.25 or newer (Framework v1.19.0), Terraform 1.10 or newer.
-- GNU Make, Python 3.10+, Docker Engine and Docker Compose v2 for acceptance tests.
-- A GoAlert installation and an existing escalation policy.
-- An admin-role GraphQL API key created with the exact operations in
-  [operations.graphql](internal/client/operations.graphql). Do not use an incoming-alert integration key.
-- HTTPS for network endpoints; loopback HTTP is supported for development.
+- **14 Managed Resources**:
+  - **Services & Ingress**: [`goalert_service`](docs/resources/service.md), [`goalert_integration_key`](docs/resources/integration_key.md), [`goalert_heartbeat_monitor`](docs/resources/heartbeat_monitor.md), [`goalert_service_label`](docs/resources/service_label.md), [`goalert_label`](docs/resources/label.md) (polymorphic across `service`, `escalationPolicy`, `schedule`, and `rotation`).
+  - **Escalation Policies**: [`goalert_escalation_policy`](docs/resources/escalation_policy.md) (ordered steps with `user_ids`, `rotation_ids`, `schedule_ids`, `webhook_urls`, and `multi_ack`).
+  - **Users & Notification Channels**: [`goalert_user`](docs/resources/user.md), [`goalert_user_contact_method`](docs/resources/user_contact_method.md) (`SMS`, `VOICE`, `EMAIL`, `WEBHOOK`, `SLACK_DM`, `enable_status_updates`, `private`), [`goalert_user_notification_rule`](docs/resources/user_notification_rule.md).
+  - **Rotations & Schedules**: [`goalert_rotation`](docs/resources/rotation.md), [`goalert_schedule`](docs/resources/schedule.md), [`goalert_schedule_rule`](docs/resources/schedule_rule.md), [`goalert_user_override`](docs/resources/user_override.md).
+  - **System Governance**: [`goalert_system_limit`](docs/resources/system_limit.md).
+- **9 Data Sources**:
+  - [`goalert_service`](docs/data-sources/service.md), [`goalert_escalation_policy`](docs/data-sources/escalation_policy.md), [`goalert_integration_key`](docs/data-sources/integration_key.md), [`goalert_heartbeat_monitor`](docs/data-sources/heartbeat_monitor.md), [`goalert_user`](docs/data-sources/user.md), [`goalert_rotation`](docs/data-sources/rotation.md), [`goalert_schedule`](docs/data-sources/schedule.md), [`goalert_slack_channel`](docs/data-sources/slack_channel.md), [`goalert_slack_user_group`](docs/data-sources/slack_user_group.md).
 
-## Start learning
+## Quick Start
 
-```console
-make poc
-make test
-make build
-make acceptance
-```
-
-The PoC runs before Terraform: real GoAlert v0.34.1 and PostgreSQL 17 in isolated
-containers, with generated credentials, a loopback-only HTTP port and ephemeral
-database storage. The acceptance suite then exercises the actual provider binary
-through Terraform. Both commands tear down only their own Compose project.
-
-[Design and evidence](docs/design.md) explains the API constraints and Framework
-lifecycle. [Development](docs/development.md) explains private `dev_overrides`
-installation on Windows and Linux. [Releases](docs/releases.md) describes signed
-packages and the independent publication decisions.
-
-## Configure a service
-
-Supply the endpoint and key through `GOALERT_ENDPOINT` and `GOALERT_API_KEY`.
-The endpoint is the full GraphQL URL, for example
-`https://alerts.example.com/api/graphql`; reverse-proxy prefixes are supported.
+1. In your GoAlert installation (*Admin -> API Keys -> Create API Key*), create an **Admin**-role System GraphQL API key bound to the canonical operations document in [`internal/client/operations.graphql`](internal/client/operations.graphql).
+2. Export `GOALERT_ENDPOINT` (for example, `https://alerts.example.com/api/graphql`) and `GOALERT_API_KEY`.
+3. Configure the provider from the HashiCorp Terraform Registry:
 
 ```hcl
 terraform {
+  required_version = ">= 1.10.0"
+
   required_providers {
     goalert = {
-      source = "healdropper/goalert"
+      source  = "healdropper/goalert"
+      version = "~> 1.0"
     }
   }
 }
+
 provider "goalert" {}
+
+resource "goalert_escalation_policy" "oncall" {
+  name        = "Primary On-Call"
+  description = "Managed by Terraform"
+  repeat      = 3
+
+  step {
+    delay_minutes = 5
+    multi_ack     = false
+    webhook_urls  = ["https://hooks.example.com/goalert"]
+  }
+}
 
 resource "goalert_service" "api" {
   name                 = "Example API"
   description          = "Owned by the API team"
-  escalation_policy_id = var.escalation_policy_id
+  escalation_policy_id = goalert_escalation_policy.oncall.id
 }
 ```
 
-This source address is the provider identity, **not an assertion that it exists in
-the public Registry**. While private, follow the development instructions; do not
-run Registry initialization for an unpublished provider.
+## Local Development & Disposable Acceptance Suite
 
-See the [provider](docs/index.md), [service](docs/resources/service.md), and
-[examples](examples/resources/goalert_service/main.tf) reference.
+Prerequisites: Go `1.25+`, Terraform `1.10+`, Python `3.10+`, GNU Make, Docker Engine, and Docker Compose v2.
 
-## Scope and next versions
+```console
+make check-format
+make test
+make vet
+make build
+make acceptance
+```
 
-v0.0.1 covers service CRUD, UUID import, drift and remote deletion.
-Existing escalation policies remain outside this resource's ownership.
-A service with an empty policy is not a usable alert-routing solution.
-Subsequent v0.0.x increments should add escalation policies and steps, then
-integration keys as a concrete consumer requires them. Each increment needs a
-PoC, acceptance coverage and a reviewed canonical-document/key migration.
-Schedules, rotations, users and notification methods are separate contracts.
+`make acceptance` launches an isolated `goalert/goalert:v0.35.0` + `postgres:17-alpine` stack with ephemeral credentials on loopback HTTP, provisions a canonical API key, and exercises the compiled provider binary through real Terraform `plan`, `apply`, `import`, drift-remediation, and `destroy` lifecycles across all 14 resources and 9 data sources.
 
-Source files and the canonical document are hand-maintained. Do not edit
-`go.sum` manually. The provider uses no environment-specific service names,
-addresses, Kubernetes assumptions or deployment credentials.
+## Documentation & Governance
 
-License: [MPL-2.0](LICENSE).
-
-## Specifications and delivery
-
-[Vision](docs/specs/00_VISION.md), [architecture](docs/specs/01_ARCHITECTURE_ADR.md)
-and [service contract](docs/specs/goalert-service.md) distinguish accepted task
-scope from observed implementation. See the [baseline](docs/sprints/sprint-0-baseline.md),
-[roadmap](docs/roadmap.md) and [proposed Sprint 1](docs/sprints/sprint-1.md).
-The [pinned lifecycle](docs/specs/spec-driven-lifecycle.md) governs future work.
-
-For possible future source-to-chat delivery, review the
-[proposed capability contract](docs/specs/alert-delivery.md) and
-[milestone options](docs/milestones/alert-delivery.md). These are planning
-proposals; the provider currently implements services only.
+- [Provider & Resource Documentation](docs/index.md)
+- [Design & GraphQL Constraints](docs/design.md)
+- [Local Development (`dev_overrides`)](docs/development.md)
+- [Signed Releases & Registry Publication](docs/releases.md)
+- [Public Repository Governance Specification](docs/specs/public-repository-governance.md)
+- [Contributing Guide](CONTRIBUTING.md) & [Security Policy](SECURITY.md)
+- License: [MPL-2.0](LICENSE)
