@@ -22,6 +22,7 @@ query ProviderReadEscalationPolicy($id: ID!) {
       id
       stepNumber
       delayMinutes
+      multiAck
       actions {
         type
         args
@@ -39,6 +40,7 @@ mutation ProviderCreateEscalationPolicy($input: CreateEscalationPolicyInput!) {
       id
       stepNumber
       delayMinutes
+      multiAck
       actions {
         type
         args
@@ -57,6 +59,7 @@ mutation ProviderCreateEscalationPolicyStep($input: CreateEscalationPolicyStepIn
     id
     stepNumber
     delayMinutes
+    multiAck
     actions {
       type
       args
@@ -180,6 +183,8 @@ query ProviderReadUserContactMethod($id: ID!) {
     id
     name
     disabled
+    private
+    statusUpdates
     dest {
       type
       args
@@ -191,6 +196,8 @@ mutation ProviderCreateUserContactMethod($input: CreateUserContactMethodInput!) 
     id
     name
     disabled
+    private
+    statusUpdates
     dest {
       type
       args
@@ -394,5 +401,32 @@ query ProviderReadSlackUserGroup($id: ID!) {
     id
     name
     handle
+  }
+}
+query ProviderReadEscalationPolicyLabels($id: ID!) {
+  escalationPolicy(id: $id) {
+    id
+    labels {
+      key
+      value
+    }
+  }
+}
+query ProviderReadScheduleLabels($id: ID!) {
+  schedule(id: $id) {
+    id
+    labels {
+      key
+      value
+    }
+  }
+}
+query ProviderReadRotationLabels($id: ID!) {
+  rotation(id: $id) {
+    id
+    labels {
+      key
+      value
+    }
   }
 }

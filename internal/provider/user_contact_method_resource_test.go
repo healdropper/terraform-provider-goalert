@@ -25,7 +25,7 @@ func TestUserContactMethodResourceSchema(t *testing.T) {
 	resp := &resource.SchemaResponse{}
 	r.Schema(context.Background(), resource.SchemaRequest{}, resp)
 
-	expectedAttrs := []string{"id", "user_id", "name", "type", "value", "disabled"}
+	expectedAttrs := []string{"id", "user_id", "name", "type", "value", "enable_status_updates", "private", "status_updates", "disabled"}
 	for _, attr := range expectedAttrs {
 		if _, ok := resp.Schema.Attributes[attr]; !ok {
 			t.Errorf("missing expected attribute %q in goalert_user_contact_method schema", attr)
