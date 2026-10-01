@@ -1760,11 +1760,254 @@ resource "goalert_system_limit" "imported_rules" {
         print("PASS: clean teardown removes system limits from Terraform state without error.", flush=True)
 
 
+def v035_acceptance(f, provider_dir):
+    with tempfile.TemporaryDirectory(prefix="goalert-provider-v035-") as tmp:
+        directory = Path(tmp)
+        cli = directory / "development.tfrc"
+        cli.write_text('provider_installation {\n  dev_overrides {\n    "registry.terraform.io/healdropper/goalert" = '
+                       + json.dumps(str(provider_dir.resolve()).replace("\\", "/"))
+                       + '\n  }\n  direct { exclude = ["registry.terraform.io/healdropper/goalert"] }\n}\n')
+        env = dict(os.environ, TF_CLI_CONFIG_FILE=str(cli), GOALERT_ENDPOINT=f.url+"/api/graphql",
+                   GOALERT_API_KEY=f.token, TF_IN_AUTOMATION="1", CHECKPOINT_DISABLE="1")
+        for key in list(env):
+            if key.startswith("TF_CLI_ARGS") or key.startswith("TF_LOG") or key in ("TF_DATA_DIR", "TF_WORKSPACE"):
+                env.pop(key)
+
+        config = """
+terraform {
+  required_providers {
+    goalert = {
+      source = "healdropper/goalert"
+    }
+  }
+}
+
+provider "goalert" {
+  allow_insecure_http = true
+}
+
+variable "multi_ack" {
+  type    = bool
+  default = true
+}
+
+variable "ep_team" {
+  type    = string
+  default = "sre-core"
+}
+
+variable "sched_tier" {
+  type    = string
+  default = "tier-1"
+}
+
+variable "rot_region" {
+  type    = string
+  default = "eu-west"
+}
+
+resource "goalert_user" "v035_user" {
+  name     = "V035 Operator"
+  email    = "v035.operator@example.com"
+  role     = "user"
+  username = "v035-operator"
+}
+
+resource "goalert_user_contact_method" "v035_cm" {
+  user_id               = goalert_user.v035_user.id
+  name                  = "V035 Webhook"
+  type                  = "WEBHOOK"
+  value                 = "https://example.com/v035-hook"
+  enable_status_updates = false
+  private               = false
+}
+
+resource "goalert_rotation" "v035_rot" {
+  name         = "V035 Rotation"
+  type         = "daily"
+  start_time   = "2026-10-01T08:00:00Z"
+  time_zone    = "Etc/UTC"
+  shift_length = 1
+  user_ids     = [goalert_user.v035_user.id]
+}
+
+resource "goalert_schedule" "v035_sched" {
+  name      = "V035 Schedule"
+  time_zone = "Etc/UTC"
+}
+
+resource "goalert_escalation_policy" "v035_ep" {
+  name        = "V035 MultiAck Policy"
+  description = "Escalation policy testing multi_ack"
+  repeat      = 1
+
+  step {
+    delay_minutes = 10
+    multi_ack     = var.multi_ack
+    user_ids      = [goalert_user.v035_user.id]
+  }
+}
+
+resource "goalert_label" "ep_label" {
+  target_type = "escalation_policy"
+  target_id   = goalert_escalation_policy.v035_ep.id
+  key         = "example.com/team"
+  value       = var.ep_team
+}
+
+resource "goalert_label" "sched_label" {
+  target_type = "schedule"
+  target_id   = goalert_schedule.v035_sched.id
+  key         = "example.com/tier"
+  value       = var.sched_tier
+}
+
+resource "goalert_label" "rot_label" {
+  target_type = "rotation"
+  target_id   = goalert_rotation.v035_rot.id
+  key         = "example.com/region"
+  value       = var.rot_region
+}
+"""
+        (directory/"main.tf").write_text(config)
+
+        def variables(multi_ack=True, ep_team="sre-core", sched_tier="tier-1", rot_region="eu-west"):
+            (directory/"terraform.tfvars.json").write_text(json.dumps({
+                "multi_ack": multi_ack,
+                "ep_team": ep_team,
+                "sched_tier": sched_tier,
+                "rot_region": rot_region,
+            }))
+
+        def tf(*args, accepted=(0,), override=None):
+            return run(["terraform", *args], cwd=directory, env=override or env, accepted=accepted)
+
+        def plan(expected_changes):
+            tf("plan", "-input=false", "-no-color", "-out=plan.bin")
+            summary = json.loads(run(["terraform", "show", "-json", "plan.bin"], cwd=directory, env=env).stdout)
+            changes = [c for c in summary.get("resource_changes", []) if c.get("mode") == "managed" and c.get("change", {}).get("actions") != ["no-op"]]
+            assert len(changes) == expected_changes, f"expected {expected_changes} changes, got {len(changes)}"
+
+        def clean():
+            res = tf("plan", "-detailed-exitcode", "-no-color", accepted=(0,))
+            assert res.returncode == 0
+            (directory/"plan.bin").unlink(missing_ok=True)
+
+        def get_resource_values(address):
+            result = tf("show", "-json")
+            state = json.loads(result.stdout)
+            for res in state.get("values", {}).get("root_module", {}).get("resources", []):
+                if res.get("address") == address:
+                    return res.get("values", {})
+            return None
+
+        # 1. Initial creation (8 resources)
+        variables(True, "sre-core", "tier-1", "eu-west")
+        plan(8)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        ep_state = get_resource_values("goalert_escalation_policy.v035_ep")
+        cm_state = get_resource_values("goalert_user_contact_method.v035_cm")
+        ep_lbl_state = get_resource_values("goalert_label.ep_label")
+        sched_lbl_state = get_resource_values("goalert_label.sched_label")
+        rot_lbl_state = get_resource_values("goalert_label.rot_label")
+
+        ep_id = ep_state["id"]
+        step_id = ep_state["step"][0]["id"]
+        sched_id = get_resource_values("goalert_schedule.v035_sched")["id"]
+        rot_id = get_resource_values("goalert_rotation.v035_rot")["id"]
+
+        assert ep_state["step"][0]["multi_ack"] is True
+        assert cm_state["private"] is False
+        assert cm_state["enable_status_updates"] is False
+        assert cm_state["status_updates"] in ("ENABLED", "DISABLED", "ENABLED_FORCED", "DISABLED_FORCED")
+        assert ep_lbl_state["id"] == f"escalation_policy:{ep_id}/example.com/team"
+        assert ep_lbl_state["value"] == "sre-core"
+        assert sched_lbl_state["id"] == f"schedule:{sched_id}/example.com/tier"
+        assert sched_lbl_state["value"] == "tier-1"
+        assert rot_lbl_state["id"] == f"rotation:{rot_id}/example.com/region"
+        assert rot_lbl_state["value"] == "eu-west"
+
+        # Verify on remote GoAlert via GraphQL
+        remote_ep = f.graphql(operation="ProviderReadEscalationPolicy", variables={"id": ep_id})["escalationPolicy"]
+        assert remote_ep["steps"][0]["multiAck"] is True
+        remote_ep_lbls = f.graphql(operation="ProviderReadEscalationPolicyLabels", variables={"id": ep_id})["escalationPolicy"]["labels"]
+        assert {"key": "example.com/team", "value": "sre-core"} in remote_ep_lbls
+        remote_sched_lbls = f.graphql(operation="ProviderReadScheduleLabels", variables={"id": sched_id})["schedule"]["labels"]
+        assert {"key": "example.com/tier", "value": "tier-1"} in remote_sched_lbls
+        remote_rot_lbls = f.graphql(operation="ProviderReadRotationLabels", variables={"id": rot_id})["rotation"]["labels"]
+        assert {"key": "example.com/region", "value": "eu-west"} in remote_rot_lbls
+        print("PASS: initial creation of multi_ack step, v0.35 contact method fields, and polymorphic labels verified.", flush=True)
+
+        # 2. In-place update of multi_ack and polymorphic label values
+        variables(False, "sre-platform", "tier-0", "us-east")
+        plan(4)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+
+        up_ep = get_resource_values("goalert_escalation_policy.v035_ep")
+        assert up_ep["id"] == ep_id
+        assert up_ep["step"][0]["id"] == step_id, "step should be updated in-place, not recreated"
+        assert up_ep["step"][0]["multi_ack"] is False
+        assert get_resource_values("goalert_label.ep_label")["value"] == "sre-platform"
+        assert get_resource_values("goalert_label.sched_label")["value"] == "tier-0"
+        assert get_resource_values("goalert_label.rot_label")["value"] == "us-east"
+
+        remote_ep = f.graphql(operation="ProviderReadEscalationPolicy", variables={"id": ep_id})["escalationPolicy"]
+        assert remote_ep["steps"][0]["multiAck"] is False
+        print("PASS: in-place update of multi_ack and polymorphic labels verified.", flush=True)
+
+        # 3. External drift detection and restoration
+        f.graphql(operation="ProviderSetServiceLabel", variables={
+            "input": {"target": {"type": "escalationPolicy", "id": ep_id}, "key": "example.com/team", "value": "drifted-team"}
+        })
+        f.graphql(operation="ProviderSetServiceLabel", variables={
+            "input": {"target": {"type": "schedule", "id": sched_id}, "key": "example.com/tier", "value": ""}
+        })
+        tf("apply", "-input=false", "-auto-approve", "-no-color")
+        clean()
+
+        remote_ep_lbls = f.graphql(operation="ProviderReadEscalationPolicyLabels", variables={"id": ep_id})["escalationPolicy"]["labels"]
+        assert {"key": "example.com/team", "value": "sre-platform"} in remote_ep_lbls
+        remote_sched_lbls = f.graphql(operation="ProviderReadScheduleLabels", variables={"id": sched_id})["schedule"]["labels"]
+        assert {"key": "example.com/tier", "value": "tier-0"} in remote_sched_lbls
+        print("PASS: external label drift and deletion detected and remediated.", flush=True)
+
+        # 4. Import verification for goalert_label
+        import_config = config + f"""
+resource "goalert_label" "imported_ep_label" {{
+  target_type = "escalation_policy"
+  target_id   = "{ep_id}"
+  key         = "example.com/team"
+  value       = var.ep_team
+}}
+"""
+        (directory/"main.tf").write_text(import_config)
+        tf("import", "goalert_label.imported_ep_label", f"escalation_policy:{ep_id}/example.com/team")
+        clean()
+        imp_lbl = get_resource_values("goalert_label.imported_ep_label")
+        assert imp_lbl["id"] == f"escalation_policy:{ep_id}/example.com/team"
+        assert imp_lbl["value"] == "sre-platform"
+        print("PASS: polymorphic goalert_label imported successfully.", flush=True)
+
+        # Remove imported duplicate from config before destroy so delete doesn't run twice on same label
+        (directory/"main.tf").write_text(config)
+        tf("state", "rm", "goalert_label.imported_ep_label")
+
+        # 5. Clean destroy
+        tf("destroy", "-input=false", "-auto-approve", "-no-color")
+        final_state = tf("show", "-json")
+        state_data = json.loads(final_state.stdout)
+        assert len(state_data.get("values", {}).get("root_module", {}).get("resources", [])) == 0
+        print("PASS: clean teardown destroys all v0.35.0 acceptance resources.", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider-dir", type=Path, default=ROOT/"bin")
     parser.add_argument("--config-template", type=Path)
-    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005", "rotations", "schedules", "limits"], default="all")
+    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005", "rotations", "schedules", "limits", "v035"], default="all")
     args = parser.parse_args()
     with disposable() as fixture:
         if args.suite in ("all", "poc"):
@@ -1785,3 +2028,6 @@ if __name__ == "__main__":
             schedules_acceptance(fixture, args.provider_dir)
         if args.suite in ("all", "limits"):
             system_limits_acceptance(fixture, args.provider_dir)
+        if args.suite in ("all", "v035"):
+            v035_acceptance(fixture, args.provider_dir)
+
