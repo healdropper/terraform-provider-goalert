@@ -1,5 +1,23 @@
 # Development log
 
+## 2026-10-01 — Upstream triage and Milestone 9 planning: Embrace Latest GoAlert Version
+
+- Executed `issue-triage-engineer` and `delivery-planning` workflows:
+  - Closed [Issue #19](https://github.com/healdropper/terraform-provider-goalert/issues/19) as completed and superseded by Milestones 5, 6, and 7.
+  - Audited the GoAlert `v0.34.1...v0.35.0` upstream GraphQL schema delta (`graphql2/schema.graphql`, `graphql2/graph/escalationpolicy.graphqls`) originally surfaced by [Issue #22](https://github.com/healdropper/terraform-provider-goalert/issues/22):
+    1. `multiAck` on `EscalationPolicyStep`, `CreateEscalationPolicyStepInput`, and `UpdateEscalationPolicyStepInput`.
+    2. `private` and `enableStatusUpdates` on `UserContactMethod`, `CreateUserContactMethodInput`, and `UpdateUserContactMethodInput`.
+    3. Polymorphic `labels` on `EscalationPolicy`, `Schedule`, and `Rotation` via `setLabel`.
+- Created [GitHub Milestone 9 (`Embrace Latest GoAlert Version`)](https://github.com/healdropper/terraform-provider-goalert/milestone/9) and shifted `Registry Publication and GA` to Milestone 10.
+- Authored canonical milestone plan [`docs/milestones/embrace-latest-goalert-version.md`](docs/milestones/embrace-latest-goalert-version.md) and opened delivery issues [#70](https://github.com/healdropper/terraform-provider-goalert/issues/70) (UPST-DISC), [#71](https://github.com/healdropper/terraform-provider-goalert/issues/71) (UPST-SPEC), [#72](https://github.com/healdropper/terraform-provider-goalert/issues/72) (UPST-IMPL), and [#73](https://github.com/healdropper/terraform-provider-goalert/issues/73) (UPST-VERIFY).
+
+## 2026-09-28 — Collaboration Channels and System Limits delivery and closure (Issues #61, #62, #63, #64)
+
+- **COL-DISC (Issue #61, PR #66):** Characterized GoAlert v0.35.0 `systemLimits`, `setSystemLimits`, `slackChannels`, and `slackUserGroups` schemas in `docs/research/collaboration-and-limits-feasibility.md` via `scripts/test_collaboration_feasibility.py`.
+- **COL-SPEC (Issue #62, PR #67):** Authored specifications `docs/specs/goalert-system-limit.md`, `docs/specs/goalert-slack-channel-data-source.md`, `docs/specs/goalert-slack-user-group-data-source.md`, and Registry documentation.
+- **COL-IMPL (Issue #63, PR #68):** Implemented `goalert_system_limit` resource (`internal/provider/system_limit_resource.go`), `data.goalert_slack_channel`, and `data.goalert_slack_user_group`, expanding `internal/client/operations.graphql` and `internal/client/client.go`.
+- **COL-VERIFY (Issue #64, PR #69):** Implemented and verified `system_limits_acceptance` in `scripts/acceptance.py` (6/6 assertions passing against disposable GoAlert v0.35.0) and closed Milestone 8.
+
 ## 2026-09-28 — Schedules and User Overrides verification and closure (Issue #55, Gate SCHED-VERIFY)
 
 - Implemented and executed end-to-end acceptance test suite `schedules_acceptance` in `scripts/acceptance.py`:
