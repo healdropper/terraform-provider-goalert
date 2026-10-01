@@ -1,7 +1,7 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: Milestones 1 through 9 completed. Registry Publication and GA (Milestone 10) active next.
+Status: Milestones 1 through 10 completed (`v1.0.0` GA published on the HashiCorp Terraform Registry).
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
 Delivery milestones represent human-scoped goals and functional capability themes decoupled from strict SemVer patch increments.
@@ -43,12 +43,7 @@ Delivery milestones represent human-scoped goals and functional capability theme
   [PR #75](https://github.com/healdropper/terraform-provider-goalert/pull/75), [PR #76](https://github.com/healdropper/terraform-provider-goalert/pull/76), [PR #77](https://github.com/healdropper/terraform-provider-goalert/pull/77), and [PR #78](https://github.com/healdropper/terraform-provider-goalert/pull/78) on 2026-10-01.
   Resources: `goalert_label`, extended `goalert_escalation_policy` (`multi_ack`), extended `goalert_user_contact_method` (`enable_status_updates`, `private`, `status_updates`).
   Closed on GitHub.
-
-## Active milestone
-
-- **Registry Publication and GA**: [registry publication and GA](milestones/registry-publication-and-ga.md).
-  - Scope: Privacy and git-history sanitization, public repository governance (`CODEOWNERS`, `CONTRIBUTING.md`, `SECURITY.md`, fork PR Actions gating `all_external_contributors`, `main` branch protection ruleset), Registry documentation validation, GPG-signed `v1.0.0` release, Terraform Registry publication, and production consumer adoption (GoAlert v0.35.0 upgrade).
-  - Tracking: [GitHub Milestone 10](https://github.com/healdropper/terraform-provider-goalert/milestone/10).
+- **Registry Publication and GA (`v1.0.0`)**: [registry publication and GA](milestones/registry-publication-and-ga.md), completed on 2026-10-02 through [PR #83](https://github.com/healdropper/terraform-provider-goalert/pull/83), [PR #84](https://github.com/healdropper/terraform-provider-goalert/pull/84), [PR #85](https://github.com/healdropper/terraform-provider-goalert/pull/85), [PR #86](https://github.com/healdropper/terraform-provider-goalert/pull/86), and [`v1.0.0` Release](https://github.com/healdropper/terraform-provider-goalert/releases/tag/v1.0.0). Published on the HashiCorp Terraform Registry as [`healdropper/goalert` `v1.0.0`](https://registry.terraform.io/providers/healdropper/goalert/latest). Closed on GitHub.
 
 ## Backlog
 

@@ -1,7 +1,7 @@
 # Registry Publication and GA (`v1.0.0`)
 
 Owner: healdropper. Recorded: 2026-10-01.
-Status: Planned and tracked under [GitHub Milestone 10](https://github.com/healdropper/terraform-provider-goalert/milestone/10).
+Status: Completed and closed ([GitHub Milestone 10](https://github.com/healdropper/terraform-provider-goalert/milestone/10), [`v1.0.0` Release](https://github.com/healdropper/terraform-provider-goalert/releases/tag/v1.0.0), [Terraform Registry `healdropper/goalert`](https://registry.terraform.io/providers/healdropper/goalert/latest)).
 
 ## Context and Scope
 
@@ -22,7 +22,7 @@ Milestone 10 prepares and executes the public open-source exposure and **v1.0.0 
 | GA-DISC | Audit privacy, git history, Registry docs, and `v1.0.0` release contract | Complete audit report in `docs/research/public-release-and-registry-audit.md` enumerating all files/commits/PRs to sanitize, Registry doc verification, and backlog issue cleanup |
 | GA-SPEC | Specify public repository governance, community files, and `v1.0.0` release contract | Accepted `docs/specs/public-repository-governance.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.github/CODEOWNERS`, and updated `docs/releases.md`, `docs/index.md`, and `README.md` |
 | GA-IMPL | Sanitize private references and history, enforce repo merge settings, and update release workflow for `v1.0.0` | Zero private references in `git grep` or `git log`, updated `.github/workflows/release.yml` for `v*` SemVer tags, Registry doc lint in `scripts/check_format.py`, and rebase-only repo settings verified via GitHub API |
-| GA-VERIFY | Transition to public with `main` ruleset & fork PR gating, publish signed `v1.0.0` to Terraform Registry, and adopt in consumer | Public visibility + active `main` ruleset + `all_external_contributors` verified via API, signed `v1.0.0` release published on Terraform Registry, and GoAlert v0.35.0 + `v1.0.0` provider verified in production consumer |
+| GA-VERIFY | Transition to public with `main` ruleset & fork PR gating, publish signed `v1.0.0` to Terraform Registry, and adopt in consumer | Public visibility + active `main` ruleset + `all_external_contributors` verified via API, signed `v1.0.0` release published on Terraform Registry (`key ID 8738CFE29D8E6C12`), and GoAlert v0.35.0 + `v1.0.0` provider verified in production consumer |
 
 ## Delivery issues
 
@@ -31,4 +31,4 @@ Milestone 10 prepares and executes the public open-source exposure and **v1.0.0 
 | GA-DISC | [#79: chore(ga): audit repository privacy, git history, Registry docs, and v1.0.0 release contract](https://github.com/healdropper/terraform-provider-goalert/issues/79) | Completed (`docs/research/public-release-and-registry-audit.md`) |
 | GA-SPEC | [#80: docs(ga): specify public repository governance, community files, and v1.0.0 release process](https://github.com/healdropper/terraform-provider-goalert/issues/80) | Completed (`docs/specs/public-repository-governance.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.github/CODEOWNERS`) |
 | GA-IMPL | [#81: feat(ga): sanitize private references, add governance files, and enable v1.0.0 release workflow](https://github.com/healdropper/terraform-provider-goalert/issues/81) | Completed |
-| GA-VERIFY | [#82: release(ga): transition to public with main ruleset, publish signed v1.0.0 to Registry, and adopt in consumer](https://github.com/healdropper/terraform-provider-goalert/issues/82) | Ready |
+| GA-VERIFY | [#82: release(ga): transition to public with main ruleset, publish signed v1.0.0 to Registry, and adopt in consumer](https://github.com/healdropper/terraform-provider-goalert/issues/82) | Completed (`v1.0.0` published on GitHub Releases and `registry.terraform.io/providers/healdropper/goalert`) |
