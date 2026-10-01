@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -25,12 +26,15 @@ type userContactMethodResource struct {
 }
 
 type userContactMethodModel struct {
-	ID       types.String `tfsdk:"id"`
-	UserID   types.String `tfsdk:"user_id"`
-	Name     types.String `tfsdk:"name"`
-	Type     types.String `tfsdk:"type"`
-	Value    types.String `tfsdk:"value"`
-	Disabled types.Bool   `tfsdk:"disabled"`
+	ID                  types.String `tfsdk:"id"`
+	UserID              types.String `tfsdk:"user_id"`
+	Name                types.String `tfsdk:"name"`
+	Type                types.String `tfsdk:"type"`
+	Value               types.String `tfsdk:"value"`
+	EnableStatusUpdates types.Bool   `tfsdk:"enable_status_updates"`
+	Private             types.Bool   `tfsdk:"private"`
+	StatusUpdates       types.String `tfsdk:"status_updates"`
+	Disabled            types.Bool   `tfsdk:"disabled"`
 }
 
 var (
@@ -95,6 +99,22 @@ func (r *userContactMethodResource) Schema(_ context.Context, _ resource.SchemaR
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
+			"enable_status_updates": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
+				MarkdownDescription: "Whether to send alert status updates to this contact method (where configurable for the destination type). Defaults to false.",
+			},
+			"private": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
+				MarkdownDescription: "When true, hides contact details from other users (GoAlert v0.35.0+). Defaults to false. Note: GoAlert hides private contact methods from non-owner sessions and system API keys on subsequent reads.",
+			},
+			"status_updates": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Effective status update state returned by GoAlert (`ENABLED`, `DISABLED`, `ENABLED_FORCED`, `DISABLED_FORCED`).",
+			},
 			"disabled": schema.BoolAttribute{
 				Computed:            true,
 				MarkdownDescription: "Whether the contact method is currently disabled.",
@@ -116,6 +136,30 @@ func (r *userContactMethodResource) Configure(_ context.Context, req resource.Co
 	r.client = c
 }
 
+func applyContactMethodToModel(cm *client.UserContactMethod, m *userContactMethodModel) {
+	m.ID = types.StringValue(cm.ID)
+	m.Name = types.StringValue(cm.Name)
+	m.Disabled = types.BoolValue(cm.Disabled)
+	m.Private = types.BoolValue(cm.Private)
+	m.StatusUpdates = types.StringValue(cm.StatusUpdates)
+	switch cm.StatusUpdates {
+	case "ENABLED":
+		m.EnableStatusUpdates = types.BoolValue(true)
+	case "DISABLED":
+		m.EnableStatusUpdates = types.BoolValue(false)
+	default:
+		if m.EnableStatusUpdates.IsNull() || m.EnableStatusUpdates.IsUnknown() {
+			m.EnableStatusUpdates = types.BoolValue(cm.StatusUpdates == "ENABLED_FORCED")
+		}
+	}
+	if cmVal := cm.Value(); cmVal != "" {
+		m.Value = types.StringValue(cmVal)
+	}
+	if cmType := cm.Type(); cmType != "" {
+		m.Type = types.StringValue(cmType)
+	}
+}
+
 func (r *userContactMethodResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan userContactMethodModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -123,21 +167,23 @@ func (r *userContactMethodResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
+	enableStatus := plan.EnableStatusUpdates.ValueBool()
+	private := plan.Private.ValueBool()
+
 	cm, err := r.client.CreateUserContactMethod(ctx, client.CreateUserContactMethodInput{
-		UserID: plan.UserID.ValueString(),
-		Name:   plan.Name.ValueString(),
-		Type:   plan.Type.ValueString(),
-		Value:  plan.Value.ValueString(),
+		UserID:              plan.UserID.ValueString(),
+		Name:                plan.Name.ValueString(),
+		Type:                plan.Type.ValueString(),
+		Value:               plan.Value.ValueString(),
+		EnableStatusUpdates: &enableStatus,
+		Private:             &private,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating GoAlert user contact method", err.Error())
 		return
 	}
 
-	plan.ID = types.StringValue(cm.ID)
-	plan.Name = types.StringValue(cm.Name)
-	plan.Disabled = types.BoolValue(cm.Disabled)
-
+	applyContactMethodToModel(cm, &plan)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -158,15 +204,7 @@ func (r *userContactMethodResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	state.Name = types.StringValue(cm.Name)
-	state.Disabled = types.BoolValue(cm.Disabled)
-	if cmVal := cm.Value(); cmVal != "" {
-		state.Value = types.StringValue(cmVal)
-	}
-	if cmType := cm.Type(); cmType != "" {
-		state.Type = types.StringValue(cmType)
-	}
-
+	applyContactMethodToModel(cm, &state)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -177,9 +215,14 @@ func (r *userContactMethodResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
+	enableStatus := plan.EnableStatusUpdates.ValueBool()
+	private := plan.Private.ValueBool()
+
 	err := r.client.UpdateUserContactMethod(ctx, client.UpdateUserContactMethodInput{
-		ID:   plan.ID.ValueString(),
-		Name: plan.Name.ValueString(),
+		ID:                  plan.ID.ValueString(),
+		Name:                plan.Name.ValueString(),
+		EnableStatusUpdates: &enableStatus,
+		Private:             &private,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating GoAlert user contact method", err.Error())
@@ -192,15 +235,7 @@ func (r *userContactMethodResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	plan.Name = types.StringValue(cm.Name)
-	plan.Disabled = types.BoolValue(cm.Disabled)
-	if cmVal := cm.Value(); cmVal != "" {
-		plan.Value = types.StringValue(cmVal)
-	}
-	if cmType := cm.Type(); cmType != "" {
-		plan.Type = types.StringValue(cmType)
-	}
-
+	applyContactMethodToModel(cm, &plan)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

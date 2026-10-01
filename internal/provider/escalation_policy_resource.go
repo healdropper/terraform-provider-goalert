@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -41,6 +42,7 @@ type stepModel struct {
 	ID             types.String         `tfsdk:"id"`
 	StepNumber     types.Int64          `tfsdk:"step_number"`
 	DelayMinutes   types.Int64          `tfsdk:"delay_minutes"`
+	MultiAck       types.Bool           `tfsdk:"multi_ack"`
 	UserIDs        []types.String       `tfsdk:"user_ids"`
 	RotationIDs    []types.String       `tfsdk:"rotation_ids"`
 	ScheduleIDs    []types.String       `tfsdk:"schedule_ids"`
@@ -113,6 +115,12 @@ func (r *escalationPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 							Required:            true,
 							MarkdownDescription: "Delay in minutes before escalating to the next step. Must be at least 1.",
 							Validators:          []validator.Int64{int64validator.AtLeast(1)},
+						},
+						"multi_ack": schema.BoolAttribute{
+							Optional:            true,
+							Computed:            true,
+							Default:             booldefault.StaticBool(false),
+							MarkdownDescription: "When true, each user in the step must acknowledge independently (GoAlert v0.35.0+). Defaults to false.",
 						},
 						"user_ids": schema.ListAttribute{
 							ElementType:         types.StringType,
@@ -198,6 +206,7 @@ func modelFromEscalationPolicy(ep *client.EscalationPolicy, prior *escalationPol
 			ID:           types.StringValue(step.ID),
 			StepNumber:   types.Int64Value(step.StepNumber),
 			DelayMinutes: types.Int64Value(step.DelayMinutes),
+			MultiAck:     types.BoolValue(step.MultiAck),
 		}
 
 		var webhookActions []webhookActionModel
@@ -303,8 +312,10 @@ func (r *escalationPolicyResource) Create(ctx context.Context, req resource.Crea
 				resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf("step %d must specify at least one target (user_ids, rotation_ids, schedule_ids) or webhook_action", i))
 				return
 			}
+			multiAck := s.MultiAck.ValueBool()
 			stepInput := client.CreateEscalationPolicyStepInput{
 				DelayMinutes: s.DelayMinutes.ValueInt64(),
+				MultiAck:     &multiAck,
 			}
 			var actions []client.DestinationInput
 			for _, uid := range s.UserIDs {
@@ -397,6 +408,9 @@ func actionsMatch(serverActions []client.Destination, planActions []webhookActio
 
 func stepMatches(serverStep client.EscalationPolicyStep, planStep stepModel) bool {
 	if serverStep.DelayMinutes != planStep.DelayMinutes.ValueInt64() {
+		return false
+	}
+	if serverStep.MultiAck != planStep.MultiAck.ValueBool() {
 		return false
 	}
 	if !actionsMatch(serverStep.Actions, planStep.WebhookActions) {
@@ -523,10 +537,12 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 		if stepID != "" && serverSteps[stepID].ID != "" {
 			s := serverSteps[stepID]
 			delay := pStep.DelayMinutes.ValueInt64()
+			multiAck := pStep.MultiAck.ValueBool()
 			if !stepMatches(s, pStep) {
 				updateStepErr := r.client.UpdateEscalationPolicyStep(ctx, client.UpdateEscalationPolicyStepInput{
 					ID:           stepID,
 					DelayMinutes: &delay,
+					MultiAck:     &multiAck,
 					Actions:      actions,
 				})
 				if updateStepErr != nil {
@@ -536,9 +552,11 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 			}
 			stepIDs = append(stepIDs, stepID)
 		} else {
+			multiAck := pStep.MultiAck.ValueBool()
 			createdStep, createStepErr := r.client.CreateEscalationPolicyStep(ctx, client.CreateEscalationPolicyStepInput{
 				EscalationPolicyID: &policyID,
 				DelayMinutes:       pStep.DelayMinutes.ValueInt64(),
+				MultiAck:           &multiAck,
 				Actions:            actions,
 			})
 			if createStepErr != nil {

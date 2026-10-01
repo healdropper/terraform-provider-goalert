@@ -981,3 +981,54 @@ func TestEscalationPolicyStepTargets(t *testing.T) {
 		t.Fatalf("unexpected update step err: %v", err)
 	}
 }
+
+func TestPolymorphicLabels(t *testing.T) {
+	const targetID = "11111111-1111-4111-8111-111111111111"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Operation string          `json:"operationName"`
+			Variables json.RawMessage `json:"variables"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		switch body.Operation {
+		case "ProviderSetServiceLabel":
+			fmt.Fprint(w, `{"data":{"setLabel":true}}`)
+		case "ProviderReadEscalationPolicyLabels":
+			fmt.Fprint(w, `{"data":{"escalationPolicy":{"id":"`+targetID+`","labels":[{"key":"example.com/team","value":"sre"}]}}}`)
+		case "ProviderReadScheduleLabels":
+			fmt.Fprint(w, `{"data":{"schedule":{"id":"`+targetID+`","labels":[{"key":"example.com/tier","value":"tier-1"}]}}}`)
+		case "ProviderReadRotationLabels":
+			fmt.Fprint(w, `{"data":{"rotation":{"id":"`+targetID+`","labels":[{"key":"example.com/region","value":"eu-west"}]}}}`)
+		default:
+			t.Errorf("unexpected operation: %s", body.Operation)
+		}
+	}))
+	defer server.Close()
+
+	c, _ := New(server.URL, "token", true)
+	ctx := context.Background()
+
+	for _, tt := range []struct {
+		targetType string
+		key        string
+		val        string
+	}{
+		{"escalation_policy", "example.com/team", "sre"},
+		{"schedule", "example.com/tier", "tier-1"},
+		{"rotation", "example.com/region", "eu-west"},
+	} {
+		if err := c.SetLabel(ctx, tt.targetType, targetID, tt.key, tt.val); err != nil {
+			t.Fatalf("SetLabel(%s) failed: %v", tt.targetType, err)
+		}
+		labels, err := c.ReadTargetLabels(ctx, tt.targetType, targetID)
+		if err != nil {
+			t.Fatalf("ReadTargetLabels(%s) failed: %v", tt.targetType, err)
+		}
+		if labels[tt.key] != tt.val {
+			t.Fatalf("expected %s=%s, got %v", tt.key, tt.val, labels)
+		}
+	}
+}
+
