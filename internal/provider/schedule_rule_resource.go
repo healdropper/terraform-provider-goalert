@@ -310,6 +310,9 @@ func (r *scheduleRuleResource) Delete(ctx context.Context, req resource.DeleteRe
 		if errors.Is(err, client.ErrNotFound) {
 			return
 		}
+		if _, readErr := r.client.ReadSchedule(ctx, scheduleID); errors.Is(readErr, client.ErrNotFound) {
+			return
+		}
 		resp.Diagnostics.AddError("Delete schedule rule failed", err.Error())
 	}
 }
