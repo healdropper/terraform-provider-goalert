@@ -11,7 +11,7 @@ The installed canonical file was read on 2026-09-21; SHA256:
 `68a5bb3c38f4b0892def62e657367b238c2f5c23b71fd80d849186bf0f598613`.
 Do not silently follow a later installed skill or lifecycle version.
 
-The remote owner is healdropper. Nighthaven organization-specific naming,
+The remote owner is healdropper. External organization-specific naming,
 deployment topology and Release Please policy do not apply by ownership.
 Foundry lifecycle governance prerequisites and release-management expectations
 still require reconciliation with this repository's existing GoReleaser flow;

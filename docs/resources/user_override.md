@@ -1,3 +1,8 @@
+---
+page_title: "goalert_user_override Resource"
+description: "Manages temporary shift coverage or replacement on a GoAlert schedule."
+---
+
 # goalert_user_override (Resource)
 
 Manages temporary shift coverage or replacement on a GoAlert schedule.

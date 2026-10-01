@@ -5,7 +5,8 @@
 - Created [GitHub Milestone 10 (`Registry Publication and GA`)](https://github.com/healdropper/terraform-provider-goalert/milestone/10) and authored canonical milestone plan [`docs/milestones/registry-publication-and-ga.md`](docs/milestones/registry-publication-and-ga.md) aligned with Doctrine Foundry v1.11.0 public repository governance rules.
 - Opened delivery gate issues [#79](https://github.com/healdropper/terraform-provider-goalert/issues/79) (`GA-DISC`), [#80](https://github.com/healdropper/terraform-provider-goalert/issues/80) (`GA-SPEC`), [#81](https://github.com/healdropper/terraform-provider-goalert/issues/81) (`GA-IMPL`), and [#82](https://github.com/healdropper/terraform-provider-goalert/issues/82) (`GA-VERIFY`) and linked them to Project #1.
 - **GA-DISC (Issue #79, PR #84):** Authored [`docs/research/public-release-and-registry-audit.md`](docs/research/public-release-and-registry-audit.md) auditing working-tree/history privacy, runner isolation (`total_count: 0`), 1:1 Terraform Registry documentation coverage (14 resources, 9 data sources), and `v1.0.0` release signing readiness. Closed out-of-scope consumer backlog issues [#10](https://github.com/healdropper/terraform-provider-goalert/issues/10) and [#11](https://github.com/healdropper/terraform-provider-goalert/issues/11), and provisioned the dedicated RSA-4096 GPG release signing key in the `release` GitHub environment (`4C110F32FCEFCBE7A0662DFE8738CFE29D8E6C12`).
-- **GA-SPEC (Issue #80):** Authored [`docs/specs/public-repository-governance.md`](docs/specs/public-repository-governance.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md), and [`.github/CODEOWNERS`](.github/CODEOWNERS), and updated [`docs/releases.md`](docs/releases.md), [`docs/index.md`](docs/index.md), and [`README.md`](README.md) for `v1.0.0` GA and public Terraform Registry consumption.
+- **GA-SPEC (Issue #80, PR #85):** Authored [`docs/specs/public-repository-governance.md`](docs/specs/public-repository-governance.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md), and [`.github/CODEOWNERS`](.github/CODEOWNERS), and updated [`docs/releases.md`](docs/releases.md), [`docs/index.md`](docs/index.md), and [`README.md`](README.md) for `v1.0.0` GA and public Terraform Registry consumption.
+- **GA-IMPL (Issue #81):** Sanitized all private ecosystem references across the working tree, commit history, and GitHub pull request metadata; updated [`.github/workflows/release.yml`](.github/workflows/release.yml) to support `v1.0.0` SemVer tags; added Registry documentation frontmatter and 1:1 parity validation in [`scripts/check_format.py`](scripts/check_format.py); and enforced rebase-only linear merge settings via the GitHub API.
 
 ## 2026-10-01 — Embrace Latest GoAlert Version delivery and closure (Issues #70, #71, #72, #73, #22)
 
@@ -182,7 +183,7 @@
 ## 2026-09-26 — Milestone v0.0.2 closure and production adoption
 
 - Closed Milestone v0.0.2: all scoped delivery gates (V002-FOUNDATION, V002-DISC, V002-SPEC, V002-IMPL, V002-VERIFY) completed and closed on GitHub and Project 1 board.
-- Successfully verified live in production cluster `the-moonglade/cenarion-watch`:
+- Successfully verified live in the downstream production consumer cluster:
   - Configured GoAlert API key with canonical operations GraphQL document and `Webhook.Enable: true`.
   - Automated deployment applied `goalert_escalation_policy.watch_critical` and both `goalert_service` resources without drift.
   - End-to-end integration verified: Grafana, Prometheus, GoAlert and Alertmanager reporting healthy.
@@ -237,7 +238,7 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 ## 2026-09-21 - SpecDD transition
 
 - Reread installed and repository instructions, verified remotes and pinned
-  Foundry v1.6.0; Nighthaven v2.6.0 applies to the consumer by ownership.
+  Foundry v1.6.0; downstream consumer governance applies separately to the consumer repository by ownership.
 - Recorded the [service contract](docs/specs/goalert-service.md) and
   [dated baseline](docs/sprints/sprint-0-baseline.md), preserving existing docs
   and historical verification without inventing prior TDD or acceptance.
@@ -308,7 +309,7 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   assigned to milestone [v0.0.2](https://github.com/healdropper/terraform-provider-goalert/milestone/2),
   and tracked on [Project 1](https://github.com/users/healdropper/projects/1).
 - Doctrine assessment: follows the release automation contingency rule from
-  Foundry v1.8.0 / Nighthaven Doctrine v2.7.0; no downstream repository policy change needed.
+  Foundry v1.8.0; no downstream repository policy change needed.
 - Verification: `git diff --check`, `make check-format`, `go vet ./...` and `go test ./...` passed.
 
 ## 2026-09-22 - Complete SpecDD delivery prerequisites

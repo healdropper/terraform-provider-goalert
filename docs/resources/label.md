@@ -1,3 +1,10 @@
+---
+page_title: "goalert_label Resource - goalert"
+subcategory: ""
+description: |-
+  Manages a key-value label attached to a GoAlert service, escalation policy, schedule, or rotation.
+---
+
 # goalert_label (Resource)
 
 Manages a key-value label attached to a GoAlert service, escalation policy, schedule, or rotation (GoAlert v0.35.0+).

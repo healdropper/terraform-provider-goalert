@@ -1,3 +1,8 @@
+---
+page_title: "goalert_user Resource"
+description: "Manages a human operator user account in GoAlert."
+---
+
 # goalert_user (Resource)
 
 Manages a human operator user account in GoAlert.

@@ -1,3 +1,8 @@
+---
+page_title: "goalert_schedule Resource"
+description: "Manages an on-call schedule in GoAlert."
+---
+
 # goalert_schedule (Resource)
 
 Manages an on-call schedule in GoAlert.

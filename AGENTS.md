@@ -1,6 +1,6 @@
 # Provider development instructions
 
-This repository is owned by healdropper, not the-moonglade.
+This repository is owned and maintained by healdropper (`healdropper/terraform-provider-goalert`).
 Keep the provider generic and independent of all consuming deployments.
 Use Terraform Plugin Framework, not Plugin SDK v2.
 Work on a dedicated branch and submit a pull request for review.

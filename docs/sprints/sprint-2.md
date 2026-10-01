@@ -8,7 +8,7 @@ Status: Completed delivery sprint. [Milestone Ingress and Integration Keys](../m
 
 As a GoAlert operator, declare integration keys on managed services to allow Grafana
 and other alert sources to send alerts into GoAlert via dedicated webhook endpoints.
-Connected with `@HornOfCenariusBot` and channel `Cenarion Watch` to complete the alert routing path.
+Connected with downstream webhook notification bridges to complete the alert routing path.
 
 ## Scope and sequence
 
@@ -34,7 +34,7 @@ Connected with `@HornOfCenariusBot` and channel `Cenarion Watch` to complete the
 
 ## Exclusions
 
-Consumer Grafana rule/contact point deployment and Telegram relay service deployment in `cenarion-watch`
+Consumer Grafana rule/contact point deployment and downstream notification relay service deployment
 follow provider readiness in a separate consumer PR. Schedules, rotations, and heartbeat monitors remain Backlog.
 
 ## DoD and evidence

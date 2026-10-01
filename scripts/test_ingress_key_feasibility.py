@@ -380,17 +380,17 @@ def run_probes():
                     "labels": {
                         "alertname": "TestHighCPU",
                         "severity": "critical",
-                        "instance": "cenarion-node-1"
+                        "instance": "example-node-1"
                     },
                     "annotations": {
                         "summary": "CPU utilization exceeded 90%",
-                        "description": "Node cenarion-node-1 CPU is at 94%"
+                        "description": "Node example-node-1 CPU is at 94%"
                     },
                     "startsAt": "2026-09-26T15:00:00Z",
                     "fingerprint": "a1b2c3d4e5f6"
                 }
             ],
-            "title": "[FIRING:1] TestHighCPU (critical cenarion-node-1)",
+            "title": "[FIRING:1] TestHighCPU (critical example-node-1)",
             "state": "alerting"
         }
         

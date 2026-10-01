@@ -1,3 +1,8 @@
+---
+page_title: "goalert_user_contact_method Resource"
+description: "Manages a notification contact method channel on a GoAlert user account."
+---
+
 # goalert_user_contact_method (Resource)
 
 Manages a notification contact method channel on a GoAlert user account.

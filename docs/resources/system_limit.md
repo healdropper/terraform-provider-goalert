@@ -1,3 +1,8 @@
+---
+page_title: "goalert_system_limit Resource"
+description: "Manages a global system limit configuration in GoAlert."
+---
+
 # goalert_system_limit (Resource)
 
 Manages a global system limit configuration in GoAlert.
