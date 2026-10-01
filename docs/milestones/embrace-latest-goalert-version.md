@@ -1,7 +1,7 @@
 # Embrace Latest GoAlert Version
 
 Owner: healdropper. Recorded: 2026-10-01.
-Status: Planned and tracked under [GitHub Milestone 9](https://github.com/healdropper/terraform-provider-goalert/milestone/9).
+Status: Completed and closed under [GitHub Milestone 9](https://github.com/healdropper/terraform-provider-goalert/milestone/9).
 
 ## Context and Upstream Delta (`v0.34.1...v0.35.0`)
 
@@ -16,7 +16,7 @@ While [Issue #22](https://github.com/healdropper/terraform-provider-goalert/issu
    - `UserContactMethod.private: Boolean!` and `statusUpdates: StatusUpdateState!`
    - `CreateUserContactMethodInput.private: Boolean` and `enableStatusUpdates: Boolean`
    - `UpdateUserContactMethodInput.private: Boolean` and `enableStatusUpdates: Boolean`
-   - Provider mapping: `enable_status_updates` attribute (and `private` where compatible with non-owner API keys) on `goalert_user_contact_method`.
+   - Provider mapping: `enable_status_updates`, `private`, and computed `status_updates` attributes on `goalert_user_contact_method`.
 3. **Polymorphic Labels for Escalation Policies, Schedules, and Rotations (`labels` / `setLabel`)**:
    - `EscalationPolicy.labels: [Label!]!`, `Schedule.labels: [Label!]!`, `Rotation.labels: [Label!]!`
    - `setLabel(input: SetLabelInput!)` now accepts `target: { type: service | escalationPolicy | schedule | rotation, id: <uuid> }`.
@@ -26,16 +26,16 @@ While [Issue #22](https://github.com/healdropper/terraform-provider-goalert/issu
 
 | ID | Planning/acceptance gate | Evidence required before closing |
 | --- | --- | --- |
-| UPST-DISC | Establish GoAlert v0.35.0 schema additions feasibility | Empirical probe against disposable GoAlert v0.35.0 characterizing `multiAck`, `private` contact method visibility under admin API keys, `enableStatusUpdates`, and `setLabel` on policies/schedules/rotations |
-| UPST-SPEC | Resolve and accept v0.35.0 resource contracts | Updated canonical specifications in `docs/specs/` and user-facing Registry docs in `docs/resources/` |
-| UPST-IMPL | Implement accepted v0.35.0 contracts | Updated `internal/client/operations.graphql`, `internal/client/client.go`, `goalert_escalation_policy` (`multi_ack`), `goalert_user_contact_method`, and `goalert_label` resource with unit tests |
+| UPST-DISC | Establish GoAlert v0.35.0 schema additions feasibility | Empirical probe against disposable GoAlert v0.35.0 characterizing `multiAck`, `private` contact method visibility under admin API keys, `enableStatusUpdates`, and `setLabel` on policies/schedules/rotations ([PR #75](https://github.com/healdropper/terraform-provider-goalert/pull/75)) |
+| UPST-SPEC | Resolve and accept v0.35.0 resource contracts | Updated canonical specifications in `docs/specs/` and user-facing Registry docs in `docs/resources/` ([PR #76](https://github.com/healdropper/terraform-provider-goalert/pull/76)) |
+| UPST-IMPL | Implement accepted v0.35.0 contracts | Updated `internal/client/operations.graphql`, `internal/client/client.go`, `goalert_escalation_policy` (`multi_ack`), `goalert_user_contact_method`, and `goalert_label` resource with unit tests ([PR #77](https://github.com/healdropper/terraform-provider-goalert/pull/77)) |
 | UPST-VERIFY | Establish provider lifecycle and acceptance confidence | End-to-end acceptance suite `v035_acceptance` in `scripts/acceptance.py` verifying CRUD, in-place updates, drift repair, and imports against disposable GoAlert v0.35.0 |
 
 ## Delivery issues
 
 | Gate | Issue | Current readiness |
 | --- | --- | --- |
-| UPST-DISC | [#70: feat: investigate GoAlert v0.35.0 GraphQL schema additions and API behavior](https://github.com/healdropper/terraform-provider-goalert/issues/70) | In progress |
-| UPST-SPEC | [#71: docs: resolve GoAlert v0.35.0 resource and schema contracts](https://github.com/healdropper/terraform-provider-goalert/issues/71) | Pending DISC |
-| UPST-IMPL | [#72: feat: implement GoAlert v0.35.0 schema capabilities in provider](https://github.com/healdropper/terraform-provider-goalert/issues/72) | Pending SPEC |
-| UPST-VERIFY | [#73: test: verify GoAlert v0.35.0 capabilities end-to-end](https://github.com/healdropper/terraform-provider-goalert/issues/73) | Pending IMPL |
+| UPST-DISC | [#70: feat: investigate GoAlert v0.35.0 GraphQL schema additions and API behavior](https://github.com/healdropper/terraform-provider-goalert/issues/70) | Completed ([PR #75](https://github.com/healdropper/terraform-provider-goalert/pull/75)) |
+| UPST-SPEC | [#71: docs: resolve GoAlert v0.35.0 resource and schema contracts](https://github.com/healdropper/terraform-provider-goalert/issues/71) | Completed ([PR #76](https://github.com/healdropper/terraform-provider-goalert/pull/76)) |
+| UPST-IMPL | [#72: feat: implement GoAlert v0.35.0 schema capabilities in provider](https://github.com/healdropper/terraform-provider-goalert/issues/72) | Completed ([PR #77](https://github.com/healdropper/terraform-provider-goalert/pull/77)) |
+| UPST-VERIFY | [#73: test: verify GoAlert v0.35.0 capabilities end-to-end](https://github.com/healdropper/terraform-provider-goalert/issues/73) | Completed |

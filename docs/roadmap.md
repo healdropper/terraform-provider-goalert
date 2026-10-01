@@ -1,7 +1,7 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: Milestones 1 through 8 completed. Embrace Latest GoAlert Version (Milestone 9) active next; Registry Publication and GA scheduled as Milestone 10.
+Status: Milestones 1 through 9 completed. Registry Publication and GA (Milestone 10) active next.
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
 Delivery milestones represent human-scoped goals and functional capability themes decoupled from strict SemVer patch increments.
@@ -39,17 +39,15 @@ Delivery milestones represent human-scoped goals and functional capability theme
   Resources: `goalert_system_limit`.
   Data sources: `goalert_slack_channel`, `goalert_slack_user_group`.
   Closed on GitHub.
+- **Embrace Latest GoAlert Version**: [embrace latest goalert version](milestones/embrace-latest-goalert-version.md), merged through
+  [PR #75](https://github.com/healdropper/terraform-provider-goalert/pull/75), [PR #76](https://github.com/healdropper/terraform-provider-goalert/pull/76), [PR #77](https://github.com/healdropper/terraform-provider-goalert/pull/77), and [PR #78](https://github.com/healdropper/terraform-provider-goalert/pull/78) on 2026-10-01.
+  Resources: `goalert_label`, extended `goalert_escalation_policy` (`multi_ack`), extended `goalert_user_contact_method` (`enable_status_updates`, `private`, `status_updates`).
+  Closed on GitHub.
 
 ## Active milestone
 
-- **Embrace Latest GoAlert Version**: [embrace latest goalert version](milestones/embrace-latest-goalert-version.md).
-  - Scope: Adopt all GraphQL schema additions introduced in GoAlert v0.35.0 (`multiAck` on escalation policy steps, `private` and `enableStatusUpdates` on user contact methods, and polymorphic `labels` on escalation policies, schedules, and rotations).
-  - Tracking: [GitHub Milestone 9](https://github.com/healdropper/terraform-provider-goalert/milestone/9).
-
-## Planned milestones (Registry launch)
-
 - **Registry Publication and GA** (Milestone 10):
-  - Scope: `tfplugindocs` pipeline integration, GPG signing identity setup, public repository transition, registry publication, and production consumer adoption.
+  - Scope: `tfplugindocs` pipeline integration, GPG signing identity setup, public repository transition, registry publication, and production consumer adoption (`cenarion-watch` GoAlert v0.35.0 upgrade).
 
 ## Backlog
 
