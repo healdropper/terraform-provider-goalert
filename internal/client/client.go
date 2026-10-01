@@ -1525,4 +1525,3 @@ func (c *Client) SearchSlackUserGroups(ctx context.Context, search string) ([]Sl
 	}
 	return result.SlackUserGroups.Nodes, nil
 }
-

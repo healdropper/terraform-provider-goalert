@@ -1031,4 +1031,3 @@ func TestPolymorphicLabels(t *testing.T) {
 		}
 	}
 }
-

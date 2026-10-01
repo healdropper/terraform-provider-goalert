@@ -46,9 +46,6 @@ class Fixture:
         self.project = "goalert-provider-" + uuid.uuid4().hex[:12]
         self.env = dict(os.environ, FIXTURE_DB_PASSWORD=secrets.token_hex(24),
                         FIXTURE_ENCRYPTION_KEY=secrets.token_hex(32))
-        if not self.env.get("DOCKER_HOST") or self.env.get("DOCKER_HOST") == "tcp://localhost:2375":
-            self.env["DOCKER_HOST"] = "tcp://127.0.0.1:2375"
-        self.env.setdefault("DOCKER_API_VERSION", "1.44")
         if os.name == "nt":
             self.env["WSLENV"] = "FIXTURE_DB_PASSWORD:FIXTURE_ENCRYPTION_KEY:FIXTURE_PORT"
         self.url = "http://127.0.0.1:" + self.env.get("FIXTURE_PORT", "18081")

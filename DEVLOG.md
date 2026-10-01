@@ -1,5 +1,10 @@
 # Development log
 
+## 2026-10-01 — Milestone 10 planning: Registry Publication and GA (`v1.0.0`)
+
+- Created [GitHub Milestone 10 (`Registry Publication and GA`)](https://github.com/healdropper/terraform-provider-goalert/milestone/10) and authored canonical milestone plan [`docs/milestones/registry-publication-and-ga.md`](docs/milestones/registry-publication-and-ga.md) aligned with Doctrine Foundry v1.11.0 public repository governance rules.
+- Opened delivery gate issues [#79](https://github.com/healdropper/terraform-provider-goalert/issues/79) (`GA-DISC`), [#80](https://github.com/healdropper/terraform-provider-goalert/issues/80) (`GA-SPEC`), [#81](https://github.com/healdropper/terraform-provider-goalert/issues/81) (`GA-IMPL`), and [#82](https://github.com/healdropper/terraform-provider-goalert/issues/82) (`GA-VERIFY`) and linked them to Project #1.
+
 ## 2026-10-01 — Embrace Latest GoAlert Version delivery and closure (Issues #70, #71, #72, #73, #22)
 
 - **UPST-DISC (Issue #70, PR #75):** Ran empirical probe `scripts/test_v035_feasibility.py` against disposable GoAlert v0.35.0 (`docs/research/goalert-v035-capabilities-feasibility.md`), verifying `multiAck` on escalation policy steps, owner-only SQL visibility of `private = true` contact methods (`CMStore.FindOne`), `enableStatusUpdates` / `statusUpdates`, and polymorphic `setLabel` across `service`, `escalationPolicy`, `schedule`, and `rotation`.
