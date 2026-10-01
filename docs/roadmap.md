@@ -1,7 +1,7 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: Service Contract, Escalation Policies and Webhook Routing, Ingress and Integration Keys, Heartbeat Monitors and Service Labels, and User Identity and Notification Rules completed. Rotations and Escalation Targets active next.
+Status: Milestones 1 through 8 completed. Embrace Latest GoAlert Version (Milestone 9) active next; Registry Publication and GA scheduled as Milestone 10.
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
 Delivery milestones represent human-scoped goals and functional capability themes decoupled from strict SemVer patch increments.
@@ -34,7 +34,6 @@ Delivery milestones represent human-scoped goals and functional capability theme
   [PR #59](https://github.com/healdropper/terraform-provider-goalert/pull/59) and [PR #60](https://github.com/healdropper/terraform-provider-goalert/pull/60) on 2026-09-28.
   Resources: `goalert_schedule`, `goalert_schedule_rule`, `goalert_user_override`, extended `goalert_escalation_policy` step targets (`schedule_ids`).
   Data sources: `goalert_schedule`. Closed on GitHub.
-
 - **Collaboration Channels and System Limits**: [collaboration channels and system limits](milestones/collaboration-channels-and-system-limits.md), merged through
   [PR #68](https://github.com/healdropper/terraform-provider-goalert/pull/68) and [PR #69](https://github.com/healdropper/terraform-provider-goalert/pull/69) on 2026-09-28.
   Resources: `goalert_system_limit`.
@@ -43,7 +42,13 @@ Delivery milestones represent human-scoped goals and functional capability theme
 
 ## Active milestone
 
-- **Registry Publication and GA**:
+- **Embrace Latest GoAlert Version**: [embrace latest goalert version](milestones/embrace-latest-goalert-version.md).
+  - Scope: Adopt all GraphQL schema additions introduced in GoAlert v0.35.0 (`multiAck` on escalation policy steps, `private` and `enableStatusUpdates` on user contact methods, and polymorphic `labels` on escalation policies, schedules, and rotations).
+  - Tracking: [GitHub Milestone 9](https://github.com/healdropper/terraform-provider-goalert/milestone/9).
+
+## Planned milestones (Registry launch)
+
+- **Registry Publication and GA** (Milestone 10):
   - Scope: `tfplugindocs` pipeline integration, GPG signing identity setup, public repository transition, registry publication, and production consumer adoption.
 
 ## Backlog
@@ -62,7 +67,7 @@ Board layout with Status columns.
 Additional views track active milestones and unassigned Backlog issues.
 Item closed and Pull request merged workflows report enabled.
 
-[Milestone: Collaboration Channels and System Limits](https://github.com/healdropper/terraform-provider-goalert/milestone/8)
+[Milestone: Embrace Latest GoAlert Version](https://github.com/healdropper/terraform-provider-goalert/milestone/9)
 is the active delivery planning container.
 Its canonical record links readiness and dependencies across
 DISC, SPEC, IMPL, and VERIFY gates.
