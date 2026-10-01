@@ -15,11 +15,14 @@ Authority: [Milestone User Identity and Notification Rules](../milestones/user-i
 | `name` | String | Required | In-place | Human-friendly label (e.g. "Work Email", "Pager SMS"). |
 | `type` | String | Required | RequiresReplace | Type of contact method: `"SMS"`, `"VOICE"`, `"EMAIL"`, `"WEBHOOK"`, or `"SLACK_DM"`. |
 | `value` | String | Required | In-place | Value (e.g. E.164 phone `+15555550199`, email address, or webhook URL). |
+| `enable_status_updates` | Boolean | Optional, Computed | In-place | Whether to send alert status updates to this contact method (where configurable for the destination type). Defaults to `false`. |
+| `private` | Boolean | Optional, Computed | In-place | When `true`, hides contact details from all other users (GoAlert v0.35.0+). Defaults to `false`. Note: GoAlert hides `private = true` contact methods from non-owner sessions and system API keys on subsequent reads. |
+| `status_updates` | String | Computed | Read-only | Effective status update state returned by GoAlert (`ENABLED`, `DISABLED`, `ENABLED_FORCED`, `DISABLED_FORCED`). |
 | `disabled` | Boolean | Computed | Read-only | Current operational status of the channel. |
 
 ## 3. Plan modifications and lifecycle rules
 - `user_id`, `type`: Invariant. Modifying forces replacement (`RequiresReplace: true`).
-- `name`, `value`: Mutated in-place via `updateUserContactMethod(input: {id, name, value})`.
+- `name`, `value`, `enable_status_updates`, `private`: Mutated in-place via `updateUserContactMethod(input: {id, name, value, enableStatusUpdates, private})`.
 
 ## 4. Import syntax
 - Compound ID format: `<user_id>/<contact_method_id>` or standalone `<contact_method_id>`.
