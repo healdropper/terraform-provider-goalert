@@ -46,8 +46,9 @@ Delivery milestones represent human-scoped goals and functional capability theme
 
 ## Active milestone
 
-- **Registry Publication and GA** (Milestone 10):
-  - Scope: `tfplugindocs` pipeline integration, GPG signing identity setup, public repository transition, registry publication, and production consumer adoption (`cenarion-watch` GoAlert v0.35.0 upgrade).
+- **Registry Publication and GA**: [registry publication and GA](milestones/registry-publication-and-ga.md).
+  - Scope: Privacy and git-history sanitization, public repository governance (`CODEOWNERS`, `CONTRIBUTING.md`, `SECURITY.md`, fork PR Actions gating `all_external_contributors`, `main` branch protection ruleset), Registry documentation validation, GPG-signed `v1.0.0` release, Terraform Registry publication, and production consumer adoption (GoAlert v0.35.0 upgrade).
+  - Tracking: [GitHub Milestone 10](https://github.com/healdropper/terraform-provider-goalert/milestone/10).
 
 ## Backlog
 
@@ -65,7 +66,7 @@ Board layout with Status columns.
 Additional views track active milestones and unassigned Backlog issues.
 Item closed and Pull request merged workflows report enabled.
 
-[Milestone: Embrace Latest GoAlert Version](https://github.com/healdropper/terraform-provider-goalert/milestone/9)
+[Milestone: Registry Publication and GA](https://github.com/healdropper/terraform-provider-goalert/milestone/10)
 is the active delivery planning container.
 Its canonical record links readiness and dependencies across
 DISC, SPEC, IMPL, and VERIFY gates.

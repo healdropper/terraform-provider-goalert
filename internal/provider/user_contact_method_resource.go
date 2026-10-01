@@ -149,7 +149,7 @@ func applyContactMethodToModel(cm *client.UserContactMethod, m *userContactMetho
 		m.EnableStatusUpdates = types.BoolValue(false)
 	default:
 		if m.EnableStatusUpdates.IsNull() || m.EnableStatusUpdates.IsUnknown() {
-			m.EnableStatusUpdates = types.BoolValue(cm.StatusUpdates == "ENABLED_FORCED")
+			m.EnableStatusUpdates = types.BoolValue(false)
 		}
 	}
 	if cmVal := cm.Value(); cmVal != "" {
