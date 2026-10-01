@@ -1,3 +1,8 @@
+---
+page_title: "goalert_rotation Resource"
+description: "Manages an on-call shift rotation in GoAlert."
+---
+
 # goalert_rotation (Resource)
 
 Manages an on-call shift rotation in GoAlert.

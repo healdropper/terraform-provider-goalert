@@ -1,3 +1,8 @@
+---
+page_title: "goalert_user Data Source"
+description: "Fetches details of an existing GoAlert user operator account. Exactly one of `id`, `email`, or `name` must be specified."
+---
+
 # goalert_user (Data Source)
 
 Fetches details of an existing GoAlert user operator account. Exactly one of `id`, `email`, or `name` must be specified.

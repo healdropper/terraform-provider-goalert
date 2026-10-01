@@ -1,3 +1,8 @@
+---
+page_title: "goalert_schedule_rule Resource"
+description: "Manages an active target coverage rule on a GoAlert schedule. Binds a rotation or user to specific shift hours and weekdays."
+---
+
 # goalert_schedule_rule (Resource)
 
 Manages an active target coverage rule on a GoAlert schedule. Binds a rotation or user to specific shift hours and weekdays.

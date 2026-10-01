@@ -1,3 +1,8 @@
+---
+page_title: "goalert_slack_user_group Data Source"
+description: "Fetches a Slack user group integrated with GoAlert by its user group ID or group name."
+---
+
 # goalert_slack_user_group (Data Source)
 
 Fetches a Slack user group integrated with GoAlert by its user group ID or group name.

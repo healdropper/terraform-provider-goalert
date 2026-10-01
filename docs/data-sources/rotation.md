@@ -1,3 +1,8 @@
+---
+page_title: "goalert_rotation Data Source"
+description: "Lookup an existing on-call shift rotation in GoAlert by unique ID or exact name."
+---
+
 # goalert_rotation (Data Source)
 
 Lookup an existing on-call shift rotation in GoAlert by unique ID or exact name.

@@ -3,10 +3,10 @@
 Owner: healdropper. Recorded: 2026-09-21. Former milestone reference: v0.0.2.
 Status: Completed and verified. Routing increment (`goalert_escalation_policy` with
 ordered steps and `builtin-webhook` actions) implemented, verified via unit and
-acceptance suites, and successfully adopted in production cluster `downstream-consumer`.
+acceptance suites, and successfully adopted in the downstream production cluster.
 [GitHub milestone](https://github.com/healdropper/terraform-provider-goalert/milestone/2)
 (closed) and [private delivery board](https://github.com/users/healdropper/projects/1).
-This milestone completed delivery; production adoption verified in `downstream-consumer/deployment`.
+This milestone completed delivery; production adoption verified in the downstream consumer deployment.
 
 ## Recorded owner decisions
 

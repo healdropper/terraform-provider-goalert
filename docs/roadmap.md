@@ -13,7 +13,7 @@ Delivery milestones represent human-scoped goals and functional capability theme
   2026-09-21. Resources: `goalert_service`.
 - **Escalation Policies and Webhook Routing**: [routing increment](milestones/escalation-policies-and-webhook-routing.md), merged through
   [PR #17](https://github.com/healdropper/terraform-provider-goalert/pull/17) on
-  2026-09-22. Resources: `goalert_escalation_policy` (with webhook step target). Successfully deployed and adopted in production cluster `downstream-consumer`.
+  2026-09-22. Resources: `goalert_escalation_policy` (with webhook step target). Successfully deployed and adopted in the downstream production consumer cluster.
 - **Ingress and Integration Keys**: [ingress and integration keys](milestones/ingress-and-integration-keys.md), merged through
   [PR #30](https://github.com/healdropper/terraform-provider-goalert/pull/30) on
   2026-09-26. Resources: `goalert_integration_key`. Closed on GitHub.

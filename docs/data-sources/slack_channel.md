@@ -1,3 +1,8 @@
+---
+page_title: "goalert_slack_channel Data Source"
+description: "Fetches a Slack channel integrated with GoAlert by its channel ID or channel name."
+---
+
 # goalert_slack_channel (Data Source)
 
 Fetches a Slack channel integrated with GoAlert by its channel ID or channel name.

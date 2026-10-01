@@ -6,14 +6,14 @@ resource for Grafana alert reception on managed GoAlert services) implemented,
 verified via unit and acceptance suites, and closed on GitHub.
 [GitHub milestone](https://github.com/healdropper/terraform-provider-goalert/milestone/3)
 (closed) and [private delivery board](https://github.com/users/healdropper/projects/1).
-This milestone completed delivery; consumer adoption in `downstream-consumer/deployment` follows.
+This milestone completed delivery; downstream consumer adoption follows.
 
 ## Recorded owner decisions
 
 - Implement integration keys on GoAlert services to allow Grafana to send alerts directly into GoAlert.
 - Type `grafana` is the priority target; generic webhooks remain an option.
-- Telegram destination is established: bot `@ExampleAlertBot` and channel `Downstream Alerts` (`chat_id = -1001234567890`).
-- Consumer integration in `downstream-consumer` will follow provider readiness to connect the end-to-end chain.
+- Downstream webhook relay destination is established in the consumer environment (e.g. `@ExampleAlertBot`, `chat_id = -1001234567890`).
+- Consumer integration will follow provider readiness to connect the end-to-end chain.
 
 ## Planning envelope
 

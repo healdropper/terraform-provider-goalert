@@ -1,3 +1,8 @@
+---
+page_title: "goalert_user_notification_rule Resource"
+description: "Manages an individual notification rule for an operator in GoAlert."
+---
+
 # goalert_user_notification_rule (Resource)
 
 Manages an individual notification rule for an operator in GoAlert.

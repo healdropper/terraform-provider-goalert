@@ -1,3 +1,8 @@
+---
+page_title: "goalert_schedule Data Source"
+description: "Fetches an existing GoAlert schedule by its unique UUID or exact name."
+---
+
 # goalert_schedule (Data Source)
 
 Fetches an existing GoAlert schedule by its unique UUID or exact name.
