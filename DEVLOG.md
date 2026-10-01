@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-10-01 — Embrace Latest GoAlert Version delivery and closure (Issues #70, #71, #72, #73, #22)
+
+- **UPST-DISC (Issue #70, PR #75):** Ran empirical probe `scripts/test_v035_feasibility.py` against disposable GoAlert v0.35.0 (`docs/research/goalert-v035-capabilities-feasibility.md`), verifying `multiAck` on escalation policy steps, owner-only SQL visibility of `private = true` contact methods (`CMStore.FindOne`), `enableStatusUpdates` / `statusUpdates`, and polymorphic `setLabel` across `service`, `escalationPolicy`, `schedule`, and `rotation`.
+- **UPST-SPEC (Issue #71, PR #76):** Updated canonical contracts `docs/specs/goalert-escalation-policy.md` and `docs/specs/goalert-user-contact-method.md`, authored `docs/specs/goalert-label.md`, and published Registry docs in `docs/resources/`.
+- **UPST-IMPL (Issue #72, PR #77):** Implemented `multi_ack` in `goalert_escalation_policy`, `enable_status_updates` / `private` / `status_updates` in `goalert_user_contact_method`, and the polymorphic `goalert_label` resource (`internal/provider/label_resource.go`), with unit tests in `internal/client/` and `internal/provider/`.
+- **UPST-VERIFY (Issue #73, PR #78):** Added and verified `v035_acceptance` in `scripts/acceptance.py` (5/5 end-to-end checks passing against disposable GoAlert v0.35.0: creation, in-place `multi_ack` & label updates, external drift/deletion remediation, `terraform import`, and clean teardown). Closed Milestone 9 (`Embrace Latest GoAlert Version`) and upstream tracking [Issue #22](https://github.com/healdropper/terraform-provider-goalert/issues/22).
+
 ## 2026-10-01 — Upstream triage and Milestone 9 planning: Embrace Latest GoAlert Version
 
 - Executed `issue-triage-engineer` and `delivery-planning` workflows:
