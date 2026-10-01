@@ -29,10 +29,16 @@ resource "goalert_user_contact_method" "oncall_phone" {
 - `user_id` (String) ID of the user owning this contact method.
 - `value` (String) Contact destination value (phone number, email address, or webhook URL).
 
+### Optional
+
+- `enable_status_updates` (Boolean) Whether to send alert status updates to this contact method (for destination types that support toggling status updates). Defaults to `false`.
+- `private` (Boolean) Whether to mark this contact method as private (GoAlert v0.35.0+). Defaults to `false`. Note: GoAlert hides `private = true` contact methods from non-owner sessions and system API keys on subsequent reads.
+
 ### Read-Only
 
 - `disabled` (Boolean) Whether the contact method is currently disabled.
 - `id` (String) The unique identifier of the contact method.
+- `status_updates` (String) Effective status update delivery mode reported by GoAlert (`ENABLED`, `DISABLED`, `ENABLED_FORCED`, `DISABLED_FORCED`).
 
 ## Import
 
