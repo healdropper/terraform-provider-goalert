@@ -191,8 +191,8 @@ def main():
         """, {
             "input": {
                 "scheduleID": sched_id,
-                "start": "2026-09-29T00:00:00Z",
-                "end": "2026-09-30T00:00:00Z",
+                "start": "2099-09-29T00:00:00Z",
+                "end": "2099-09-30T00:00:00Z",
                 "addUserID": u2["id"],
                 "removeUserID": u1["id"]
             }
@@ -208,8 +208,8 @@ def main():
         """, {
             "input": {
                 "id": override["id"],
-                "start": "2026-09-29T02:00:00Z",
-                "end": "2026-09-30T02:00:00Z",
+                "start": "2099-09-29T02:00:00Z",
+                "end": "2099-09-30T02:00:00Z",
                 "addUserID": u2["id"]
             }
         }, session=True)
