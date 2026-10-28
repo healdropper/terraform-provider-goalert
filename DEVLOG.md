@@ -419,3 +419,9 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   - Verified atomic `setConfig` partial updates for `OIDC.*` and newline-separated `Webhook.AllowedURLs`.
   - Characterized `extensions.isMultiFieldError` and `extensions.isFieldError` (including `\"<ConfigID>\".Value` field names and quoted input literals in `strconv.ParseInt` errors).
 - Verification: `python3 scripts/test_system_config_feasibility.py`, `make test`, `make check-format`, and `git diff --check` passed.
+
+## 2026-10-28 - Specify `goalert_system_config` contract and Registry documentation (CFG-SPEC, #90)
+
+- Goal: define the canonical resource contract and Terraform Registry documentation under Gate `CFG-SPEC` ([#90](https://github.com/healdropper/terraform-provider-goalert/issues/90)).
+- Added [docs/specs/goalert-system-config.md](docs/specs/goalert-system-config.md) and [docs/resources/system_config.md](docs/resources/system_config.md), and updated [docs/index.md](docs/index.md) and [README.md](README.md) for 15 managed resources.
+- Verification: `make PYTHON=python3 check-format`, `make test`, and `git diff --check` passed.
