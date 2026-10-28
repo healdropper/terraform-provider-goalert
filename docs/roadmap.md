@@ -1,7 +1,7 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: Milestones 1 through 10 completed (`v1.0.0` GA published on the HashiCorp Terraform Registry).
+Status: Milestones 1 through 10 completed (`v1.0.0` GA published on the HashiCorp Terraform Registry); Milestone 11 ([System Configuration Management](milestones/system-configuration-management.md)) active.
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
 Delivery milestones represent human-scoped goals and functional capability themes decoupled from strict SemVer patch increments.
@@ -53,6 +53,7 @@ Delivery milestones represent human-scoped goals and functional capability theme
 | External chat adapter and real source-to-chat demonstration | C, Proposed; consumer-owned delivery | healdropper | Outside provider runtime (#11) |
 | Independent Grafana availability | C, Backlog | healdropper | [Availability RFC](specs/grafana-availability.md) (#10) |
 | Public visibility / Registry / production adoption | Three separate decisions | healdropper | Scheduled for Registry Publication milestone; [Existing gates](releases.md#three-independent-decisions) |
+| Declarative GoAlert system configuration (`goalert_system_config`) | C, Scheduled in Milestone 11 | healdropper | [System Configuration Management](milestones/system-configuration-management.md) ([#88](https://github.com/healdropper/terraform-provider-goalert/issues/88), [#89](https://github.com/healdropper/terraform-provider-goalert/issues/89)–[#93](https://github.com/healdropper/terraform-provider-goalert/issues/93)) |
 
 ## Delivery tracking
 
@@ -61,7 +62,7 @@ Board layout with Status columns.
 Additional views track active milestones and unassigned Backlog issues.
 Item closed and Pull request merged workflows report enabled.
 
-[Milestone: Registry Publication and GA](https://github.com/healdropper/terraform-provider-goalert/milestone/10)
+[Milestone: System Configuration Management](https://github.com/healdropper/terraform-provider-goalert/milestone/11)
 is the active delivery planning container.
 Its canonical record links readiness and dependencies across
-DISC, SPEC, IMPL, and VERIFY gates.
+CFG-DISC, CFG-SPEC, CFG-CLIENT, CFG-RESOURCE, and CFG-VERIFY gates.

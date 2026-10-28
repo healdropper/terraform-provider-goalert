@@ -402,3 +402,11 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   - Unit tests: `go test -v ./...` passed 100%.
   - Acceptance tests: `python scripts/acceptance.py --suite all` passed 100% against real GoAlert v0.35.0 container across all milestones (PoC, Service, Policy, Integration Key, Heartbeats/Labels/Data Sources, and Users/Contact Methods/Notification Rules).
   - Static checks: `python scripts/check_format.py` and `git diff --check` passed cleanly.
+
+## 2026-10-28 - Triage #88 and plan Milestone 11 (System Configuration Management)
+
+- Goal: triage external enhancement request [#88](https://github.com/healdropper/terraform-provider-goalert/issues/88) (`goalert_system_config` for `Admin › Config`) and plan Milestone 11 ([System Configuration Management](docs/milestones/system-configuration-management.md)).
+- Verified all upstream GoAlert `v0.35.0` claims (`graphql2/graphqlapp/config.go`, `graphql2/mapconfig.go`, `config/config.go`, `config/store.go`, `app/getsetconfig.go`) and aligned with reporter `@Fenrir-15` on write-only secrets (`secrets_wo`) with salted `HMAC-SHA256` drift hashes (`secret_hashes`), immediate plaintext scrubbing in `internal/client/client.go`, unmanage-on-remove update semantics, sanitized field validation errors, and `system:<keys>` zero-diff import.
+- Created [GitHub Milestone 11 (`System Configuration Management`)](https://github.com/healdropper/terraform-provider-goalert/milestone/11) and decomposed delivery into five small gate issues: [#89](https://github.com/healdropper/terraform-provider-goalert/issues/89) (`CFG-DISC`), [#90](https://github.com/healdropper/terraform-provider-goalert/issues/90) (`CFG-SPEC`), [#91](https://github.com/healdropper/terraform-provider-goalert/issues/91) (`CFG-CLIENT`), [#92](https://github.com/healdropper/terraform-provider-goalert/issues/92) (`CFG-RESOURCE`), and [#93](https://github.com/healdropper/terraform-provider-goalert/issues/93) (`CFG-VERIFY`).
+- Updated [docs/roadmap.md](docs/roadmap.md) and added [docs/milestones/system-configuration-management.md](docs/milestones/system-configuration-management.md).
+- Verification: `make check-format` and `git diff --check` passed.
