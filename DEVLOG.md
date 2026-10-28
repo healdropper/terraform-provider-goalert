@@ -410,3 +410,12 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Created [GitHub Milestone 11 (`System Configuration Management`)](https://github.com/healdropper/terraform-provider-goalert/milestone/11) and decomposed delivery into five small gate issues: [#89](https://github.com/healdropper/terraform-provider-goalert/issues/89) (`CFG-DISC`), [#90](https://github.com/healdropper/terraform-provider-goalert/issues/90) (`CFG-SPEC`), [#91](https://github.com/healdropper/terraform-provider-goalert/issues/91) (`CFG-CLIENT`), [#92](https://github.com/healdropper/terraform-provider-goalert/issues/92) (`CFG-RESOURCE`), and [#93](https://github.com/healdropper/terraform-provider-goalert/issues/93) (`CFG-VERIFY`).
 - Updated [docs/roadmap.md](docs/roadmap.md) and added [docs/milestones/system-configuration-management.md](docs/milestones/system-configuration-management.md).
 - Verification: `make check-format` and `git diff --check` passed.
+
+## 2026-10-28 - Prove GoAlert v0.35.0 system config GraphQL feasibility (CFG-DISC, #89)
+
+- Goal: execute empirical feasibility probe for `config(all: true)` and `setConfig` against disposable GoAlert `v0.35.0` under Gate `CFG-DISC` ([#89](https://github.com/healdropper/terraform-provider-goalert/issues/89)).
+- Added `scripts/test_system_config_feasibility.py` and recorded findings in [docs/research/system-config-feasibility.md](docs/research/system-config-feasibility.md):
+  - Verified 68 total configuration keys (`59` `password: false`, `9` `password: true`) and admin-role enforcement.
+  - Verified atomic `setConfig` partial updates for `OIDC.*` and newline-separated `Webhook.AllowedURLs`.
+  - Characterized `extensions.isMultiFieldError` and `extensions.isFieldError` (including `\"<ConfigID>\".Value` field names and quoted input literals in `strconv.ParseInt` errors).
+- Verification: `python3 scripts/test_system_config_feasibility.py`, `make test`, `make check-format`, and `git diff --check` passed.
