@@ -2003,11 +2003,263 @@ resource "goalert_label" "imported_ep_label" {{
         print("PASS: clean teardown destroys all v0.35.0 acceptance resources.", flush=True)
 
 
+def system_config_acceptance(f, provider_dir):
+    with tempfile.TemporaryDirectory(prefix="goalert-provider-syscfg-") as tmp:
+        directory = Path(tmp)
+        cli = directory / "development.tfrc"
+        cli.write_text('provider_installation {\n  dev_overrides {\n    "registry.terraform.io/healdropper/goalert" = '
+                       + json.dumps(str(provider_dir.resolve()).replace("\\", "/"))
+                       + '\n  }\n  direct { exclude = ["registry.terraform.io/healdropper/goalert"] }\n}\n')
+        env = dict(os.environ, TF_CLI_CONFIG_FILE=str(cli), GOALERT_ENDPOINT=f.url+"/api/graphql",
+                   GOALERT_API_KEY=f.token, TF_IN_AUTOMATION="1", CHECKPOINT_DISABLE="1")
+        for key in list(env):
+            if key.startswith("TF_CLI_ARGS") or key.startswith("TF_LOG") or key in ("TF_DATA_DIR", "TF_WORKSPACE"):
+                env.pop(key)
+
+        def tf(*args, accepted=(0,), override=None):
+            return run(["terraform", *args], cwd=directory, env=override or env, accepted=accepted)
+
+        ver_info = json.loads(tf("version", "-json").stdout)
+        tf_ver = tuple(int(part) for part in ver_info["terraform_version"].split("-")[0].split(".")[:2])
+        supports_write_only = tf_ver >= (1, 11)
+
+        def clean():
+            res = tf("plan", "-detailed-exitcode", "-no-color", accepted=(0,))
+            assert res.returncode == 0
+            (directory/"plan.bin").unlink(missing_ok=True)
+
+        def get_resource_values(address):
+            result = tf("show", "-json")
+            state = json.loads(result.stdout)
+            for res in state.get("values", {}).get("root_module", {}).get("resources", []):
+                if res.get("address") == address:
+                    return res.get("values", {})
+            return None
+
+        def read_remote_config():
+            res = f.graphql(operation="ProviderReadSystemConfig", variables={})
+            return {item["id"]: item["value"] for item in res.get("config", [])}
+
+        if supports_write_only:
+            config = """
+terraform {
+  required_providers {
+    goalert = {
+      source = "healdropper/goalert"
+    }
+  }
+}
+
+provider "goalert" {
+  allow_insecure_http = true
+}
+
+variable "public_url" {
+  type    = string
+  default = "https://goalert.example.com"
+}
+
+variable "app_name" {
+  type    = string
+  default = "GoAlert Acceptance"
+}
+
+variable "oidc_secret" {
+  type      = string
+  sensitive = true
+  default   = "super-secret-oidc-token-v1-998877"
+}
+
+resource "goalert_system_config" "main" {
+  settings = {
+    "General.PublicURL"       = var.public_url
+    "General.ApplicationName" = var.app_name
+    "OIDC.Enable"             = "true"
+    "OIDC.IssuerURL"          = "https://idp.example.com/oidc"
+    "OIDC.ClientID"           = "goalert-oidc-client"
+    "OIDC.NewUsers"           = "true"
+  }
+
+  secrets_wo = {
+    "OIDC.ClientSecret" = var.oidc_secret
+  }
+}
+"""
+        else:
+            config = """
+terraform {
+  required_providers {
+    goalert = {
+      source = "healdropper/goalert"
+    }
+  }
+}
+
+provider "goalert" {
+  allow_insecure_http = true
+}
+
+variable "public_url" {
+  type    = string
+  default = "https://goalert.example.com"
+}
+
+variable "app_name" {
+  type    = string
+  default = "GoAlert Acceptance"
+}
+
+resource "goalert_system_config" "main" {
+  settings = {
+    "General.PublicURL"       = var.public_url
+    "General.ApplicationName" = var.app_name
+  }
+}
+"""
+        (directory/"main.tf").write_text(config)
+
+        # 1. Initial creation and zero plaintext secret persistence check
+        tf("apply", "-input=false", "-auto-approve", "-no-color")
+        clean()
+
+        cfg_state = get_resource_values("goalert_system_config.main")
+        assert cfg_state["id"] == "system"
+        assert cfg_state["settings"]["General.PublicURL"] == "https://goalert.example.com"
+        assert cfg_state["settings"]["General.ApplicationName"] == "GoAlert Acceptance"
+
+        remote_cfg = read_remote_config()
+        assert remote_cfg["General.PublicURL"] == "https://goalert.example.com"
+        assert remote_cfg["General.ApplicationName"] == "GoAlert Acceptance"
+
+        if supports_write_only:
+            raw_state_text = (directory / "terraform.tfstate").read_text()
+            assert "super-secret-oidc-token-v1-998877" not in raw_state_text, "plaintext secret leaked into terraform.tfstate"
+            assert cfg_state.get("secrets_wo") is None
+            first_hash = cfg_state["secret_hashes"]["OIDC.ClientSecret"]
+            assert len(first_hash) == 64
+            assert remote_cfg["OIDC.Enable"] == "true"
+            assert remote_cfg["OIDC.ClientSecret"] == "super-secret-oidc-token-v1-998877"
+        print("PASS: initial creation and state hygiene of goalert_system_config verified.", flush=True)
+
+        # 2. In-place update (and secret rotation on Terraform >= 1.11)
+        (directory/"terraform.tfvars.json").write_text(json.dumps({
+            "public_url": "https://alerts.example.com",
+            "app_name": "GoAlert Renamed",
+            **(
+                {"oidc_secret": "rotated-secret-oidc-token-v2-112233"}
+                if supports_write_only else {}
+            ),
+        }))
+        tf("apply", "-input=false", "-auto-approve", "-no-color")
+        clean()
+
+        remote_cfg = read_remote_config()
+        assert remote_cfg["General.PublicURL"] == "https://alerts.example.com"
+        assert remote_cfg["General.ApplicationName"] == "GoAlert Renamed"
+        if supports_write_only:
+            raw_state_text = (directory / "terraform.tfstate").read_text()
+            assert "rotated-secret-oidc-token-v2-112233" not in raw_state_text
+            second_hash = get_resource_values("goalert_system_config.main")["secret_hashes"]["OIDC.ClientSecret"]
+            assert second_hash != first_hash
+            assert remote_cfg["OIDC.ClientSecret"] == "rotated-secret-oidc-token-v2-112233"
+        print("PASS: in-place settings update and write-only secret rotation verified.", flush=True)
+
+        # 3. Remote drift detection and restoration (both non-secret and secret)
+        drift_inputs = [{"id": "General.ApplicationName", "value": "Drifted UI Name"}]
+        if supports_write_only:
+            drift_inputs.append({"id": "OIDC.ClientSecret", "value": "drifted-ui-secret-value"})
+        f.graphql(operation="ProviderSetSystemConfig", variables={"input": drift_inputs})
+
+        drift_plan = tf("plan", "-detailed-exitcode", "-no-color", accepted=(2,))
+        assert drift_plan.returncode == 2
+        tf("apply", "-input=false", "-auto-approve", "-no-color")
+        clean()
+
+        remote_cfg = read_remote_config()
+        assert remote_cfg["General.ApplicationName"] == "GoAlert Renamed"
+        if supports_write_only:
+            assert remote_cfg["OIDC.ClientSecret"] == "rotated-secret-oidc-token-v2-112233"
+        print("PASS: remote drift on settings and password keys detected via HMAC-SHA256 and repaired.", flush=True)
+
+        # 4. Key unmanagement on Update (removing General.ApplicationName drops it from state without clearing in GoAlert)
+        if supports_write_only:
+            unmanage_config = config.replace('    "General.ApplicationName" = var.app_name\n', "")
+        else:
+            unmanage_config = config.replace('    "General.ApplicationName" = var.app_name\n', "")
+        (directory/"main.tf").write_text(unmanage_config)
+        tf("apply", "-input=false", "-auto-approve", "-no-color")
+        clean()
+
+        cfg_state = get_resource_values("goalert_system_config.main")
+        assert "General.ApplicationName" not in cfg_state["settings"]
+        remote_cfg = read_remote_config()
+        assert remote_cfg["General.ApplicationName"] == "GoAlert Renamed", "unmanaged key must remain untouched on remote GoAlert"
+        print("PASS: removing a key from settings unmanages it in state while preserving remote GoAlert value.", flush=True)
+
+        # 5. Zero-diff import via system:<keys>
+        tf("state", "rm", "goalert_system_config.main")
+        if supports_write_only:
+            import_id = "system:General.PublicURL,OIDC.Enable,OIDC.IssuerURL,OIDC.ClientID,OIDC.NewUsers,OIDC.ClientSecret"
+        else:
+            import_id = "system:General.PublicURL"
+        tf("import", "goalert_system_config.main", import_id)
+        clean()
+        print("PASS: zero-diff import with system:<keys> verified.", flush=True)
+
+        # 6. Sanitized validation error when enabling Slack without required fields (append invalid resource so .main remains in state)
+        bad_config = unmanage_config + """
+resource "goalert_system_config" "bad" {
+  settings = {
+    "Slack.Enable" = "true"
+  }
+}
+"""
+        (directory/"main.tf").write_text(bad_config)
+        bad_res = tf("apply", "-input=false", "-auto-approve", "-no-color", accepted=(1,))
+        bad_out = bad_res.stdout + bad_res.stderr
+        assert "Slack.ClientID: required to enable Slack" in bad_out
+        print("PASS: sanitized <ConfigID>: <reason> validation diagnostic verified.", flush=True)
+
+        # Restore valid config before AST key migration test
+        (directory/"main.tf").write_text(unmanage_config)
+
+        # 7. AST key migration test: pre-v1.1.0 API key rejected for system config operations
+        before_state = (directory / "terraform.tfstate").read_bytes()
+        v100_document = (ROOT / "internal" / "client" / "operations.graphql").read_text().split("query ProviderReadSystemConfig")[0]
+        v100_key = f.key("admin", document=v100_document)
+        bad_key_env = dict(env, GOALERT_API_KEY=v100_key)
+        v100_result = tf("plan", "-input=false", "-no-color", accepted=(1,), override=bad_key_env)
+        v100_out = v100_result.stdout + v100_result.stderr
+        assert any(expected in v100_out for expected in [
+            "wrong query for API key",
+            "API key document mismatch",
+            "HTTP status 422",
+        ])
+        assert (directory / "terraform.tfstate").read_bytes() == before_state
+        print("PASS: pre-v1.1.0 API key rejected by GoAlert AST hash validation for system config.", flush=True)
+
+        # 8. Reset OIDC/test keys so subsequent runs start clean, then destroy state
+        f.graphql(operation="ProviderSetSystemConfig", variables={"input": [
+            {"id": "OIDC.Enable", "value": "false"},
+            {"id": "OIDC.IssuerURL", "value": ""},
+            {"id": "OIDC.ClientID", "value": ""},
+            {"id": "OIDC.ClientSecret", "value": ""},
+            {"id": "OIDC.NewUsers", "value": "false"},
+            {"id": "General.PublicURL", "value": ""},
+            {"id": "General.ApplicationName", "value": ""},
+        ]})
+        tf("destroy", "-input=false", "-auto-approve", "-no-color")
+        final_state = tf("show", "-json")
+        state_data = json.loads(final_state.stdout)
+        assert len(state_data.get("values", {}).get("root_module", {}).get("resources", [])) == 0
+        print("PASS: clean teardown removes goalert_system_config from Terraform state.", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider-dir", type=Path, default=ROOT/"bin")
     parser.add_argument("--config-template", type=Path)
-    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005", "rotations", "schedules", "limits", "v035"], default="all")
+    parser.add_argument("--suite", choices=["all", "poc", "service", "policy", "integration_key", "v004", "v005", "rotations", "schedules", "limits", "v035", "system_config"], default="all")
     args = parser.parse_args()
     with disposable() as fixture:
         if args.suite in ("all", "poc"):
@@ -2030,4 +2282,6 @@ if __name__ == "__main__":
             system_limits_acceptance(fixture, args.provider_dir)
         if args.suite in ("all", "v035"):
             v035_acceptance(fixture, args.provider_dir)
+        if args.suite in ("all", "system_config"):
+            system_config_acceptance(fixture, args.provider_dir)
 

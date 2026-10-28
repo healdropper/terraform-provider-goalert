@@ -441,3 +441,18 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   - Implemented per-resource 256-bit salt persistence in `resp.Private` (`system_config_salt`) and `ModifyPlan` salted `HMAC-SHA256` drift comparison in `secret_hashes`.
   - Implemented unmanage-on-remove update semantics, state-only `Delete` no-op, and `system` / `system:<keys>` zero-diff import.
 - Verification: `go test -v ./internal/provider -run TestSystemConfig`, `make PYTHON=python3 check-format test vet build`, and `git diff --check` passed.
+
+## 2026-10-28 - Verify `goalert_system_config` end-to-end lifecycle and close Milestone 11 (CFG-VERIFY, #93, #88)
+
+- Goal: verify end-to-end `goalert_system_config` acceptance against disposable GoAlert `v0.35.0` under Gate `CFG-VERIFY` ([#93](https://github.com/healdropper/terraform-provider-goalert/issues/93)) and close parent intake [#88](https://github.com/healdropper/terraform-provider-goalert/issues/88).
+- Encoded `system_config_salt` in `resp.Private` as valid JSON in [internal/provider/system_config_resource.go](internal/provider/system_config_resource.go) and deferred `secret_hashes` computation to `Create` on initial creation when private state is not yet initialized.
+- Added `system_config_acceptance` to [scripts/acceptance.py](scripts/acceptance.py) verifying:
+  1. Initial creation of `settings` and write-only `secrets_wo` (`OIDC.*`) with zero plaintext secret leakage in `terraform.tfstate`.
+  2. In-place `settings` update and `secrets_wo` rotation without version counters.
+  3. Out-of-band remote drift detection and remediation across both `settings` and `password: true` keys via salted `HMAC-SHA256` (`secret_hashes`).
+  4. Key unmanagement on `Update` when a key is removed from `settings` while preserving its remote value in GoAlert.
+  5. Zero-diff import via `system:<keys>`.
+  6. Sanitized `<ConfigID>: <reason>` validation diagnostic on invalid cross-field configuration.
+  7. Pre-`v1.1.0` API key rejection by GoAlert AST hash validation.
+  8. Clean state-only teardown on `terraform destroy`.
+- Verification: `python3 scripts/acceptance.py --suite system_config`, `make PYTHON=python3 check-format test vet build`, and `git diff --check` passed.

@@ -1,7 +1,7 @@
 # System Configuration Management
 
 Owner: healdropper. Recorded: 2026-10-28.
-Status: Active planning under [GitHub Milestone 11](https://github.com/healdropper/terraform-provider-goalert/milestone/11).
+Status: Completed under [GitHub Milestone 11](https://github.com/healdropper/terraform-provider-goalert/milestone/11).
 Parent intake: [Issue #88](https://github.com/healdropper/terraform-provider-goalert/issues/88).
 
 ## Recorded owner decisions
@@ -21,15 +21,15 @@ Parent intake: [Issue #88](https://github.com/healdropper/terraform-provider-goa
 | CFG-SPEC | Resolve and accept `goalert_system_config` contract and documentation | Canonical specification `docs/specs/goalert-system-config.md` and Registry documentation `docs/resources/system_config.md` (with OIDC + `secrets_wo` example, zero-diff import, `ephemeral` secret source note, and high-entropy password note) | Completed ([#90](https://github.com/healdropper/terraform-provider-goalert/issues/90)) |
 | CFG-CLIENT | Implement GraphQL operations, HMAC scrubbing, and sanitized field errors | `ProviderReadSystemConfig` and `ProviderSetSystemConfig` in `internal/client/operations.graphql`, client methods with immediate plaintext scrubbing and salted `HMAC-SHA256` digests, sanitized field validation errors, and unit tests in `internal/client/client_test.go` | Completed ([#91](https://github.com/healdropper/terraform-provider-goalert/issues/91)) |
 | CFG-RESOURCE | Implement `goalert_system_config` resource with write-only secrets and zero-diff import | `internal/provider/system_config_resource.go` (`settings`, `secrets_wo`, `secret_hashes`, `ModifyPlan` HMAC comparison, key unmanagement on `Update`, state-only `Delete`, and `system:<keys>` import) plus unit tests in `internal/provider/system_config_resource_test.go` | Completed ([#92](https://github.com/healdropper/terraform-provider-goalert/issues/92)) |
-| CFG-VERIFY | Verify `goalert_system_config` end-to-end lifecycle against disposable GoAlert v0.35.0 | `system_config_acceptance` suite in `scripts/acceptance.py` proving OIDC creation, zero plaintext secrets in `.tfstate`, in-place updates, secret rotation, remote drift repair, key unmanagement, zero-diff import, sanitized validation errors, and AST key migration | Planned ([#93](https://github.com/healdropper/terraform-provider-goalert/issues/93)) |
+| CFG-VERIFY | Verify `goalert_system_config` end-to-end lifecycle against disposable GoAlert v0.35.0 | `system_config_acceptance` suite in `scripts/acceptance.py` proving OIDC creation, zero plaintext secrets in `.tfstate`, in-place updates, secret rotation, remote drift repair, key unmanagement, zero-diff import, sanitized validation errors, and AST key migration | Completed ([#93](https://github.com/healdropper/terraform-provider-goalert/issues/93)) |
 
 ## Delivery issues
 
 | Gate | Issue | Current readiness |
 | --- | --- | --- |
-| Intake | [#88: feat: manage system configuration (Admin › Config) with a goalert_system_config resource](https://github.com/healdropper/terraform-provider-goalert/issues/88) | Triaged (`Track C`, `enhancement`) |
+| Intake | [#88: feat: manage system configuration (Admin › Config) with a goalert_system_config resource](https://github.com/healdropper/terraform-provider-goalert/issues/88) | Completed |
 | CFG-DISC | [#89: feat(config): probe GoAlert v0.35.0 config and setConfig GraphQL behavior](https://github.com/healdropper/terraform-provider-goalert/issues/89) | Completed |
 | CFG-SPEC | [#90: docs(config): specify goalert_system_config contract and user documentation](https://github.com/healdropper/terraform-provider-goalert/issues/90) | Completed |
 | CFG-CLIENT | [#91: feat(client): add system config GraphQL operations, HMAC scrubbing, and sanitized field errors](https://github.com/healdropper/terraform-provider-goalert/issues/91) | Completed |
 | CFG-RESOURCE | [#92: feat(provider): implement goalert_system_config resource with write-only secrets and zero-diff import](https://github.com/healdropper/terraform-provider-goalert/issues/92) | Completed |
-| CFG-VERIFY | [#93: test(config): verify goalert_system_config end-to-end lifecycle and close #88](https://github.com/healdropper/terraform-provider-goalert/issues/93) | Ready |
+| CFG-VERIFY | [#93: test(config): verify goalert_system_config end-to-end lifecycle and close #88](https://github.com/healdropper/terraform-provider-goalert/issues/93) | Completed |
