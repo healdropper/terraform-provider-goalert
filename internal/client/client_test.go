@@ -1031,3 +1031,87 @@ func TestPolymorphicLabels(t *testing.T) {
 		}
 	}
 }
+
+func TestSystemConfigOperations(t *testing.T) {
+	t.Run("read scrubs password values and computes salted HMAC-SHA256", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Operation string `json:"operationName"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			switch body.Operation {
+			case "ProviderReadSystemConfig":
+				fmt.Fprint(w, `{"data":{"config":[{"id":"General.ApplicationName","description":"App Name","value":"GoAlert Prod","type":"string","password":false,"deprecated":""},{"id":"OIDC.ClientSecret","description":"OIDC Secret","value":"top-secret-plaintext-123","type":"string","password":true,"deprecated":""}]}}`)
+			case "ProviderSetSystemConfig":
+				fmt.Fprint(w, `{"data":{"setConfig":true}}`)
+			default:
+				t.Errorf("unexpected operation: %s", body.Operation)
+			}
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		ctx := context.Background()
+
+		if err := c.SetSystemConfig(ctx, []ConfigValueInput{
+			{ID: "General.ApplicationName", Value: "GoAlert Prod"},
+			{ID: "OIDC.ClientSecret", Value: "top-secret-plaintext-123"},
+		}); err != nil {
+			t.Fatalf("SetSystemConfig failed: %v", err)
+		}
+
+		items, err := c.ReadSystemConfig(ctx, "per-resource-random-salt")
+		if err != nil {
+			t.Fatalf("ReadSystemConfig failed: %v", err)
+		}
+		if len(items) != 2 {
+			t.Fatalf("expected 2 items, got %d", len(items))
+		}
+		if items[0].ID != "General.ApplicationName" || items[0].Value != "GoAlert Prod" || items[0].ValueHash != "" {
+			t.Fatalf("unexpected non-password item: %+v", items[0])
+		}
+		if items[1].ID != "OIDC.ClientSecret" || !items[1].Password {
+			t.Fatalf("unexpected password item metadata: %+v", items[1])
+		}
+		if items[1].Value != "" {
+			t.Fatalf("expected plaintext password Value to be scrubbed to empty string, got %q", items[1].Value)
+		}
+		expectedHash := HashSystemConfigSecret("per-resource-random-salt", "top-secret-plaintext-123")
+		if items[1].ValueHash != expectedHash || len(expectedHash) != 64 {
+			t.Fatalf("expected ValueHash %q, got %q", expectedHash, items[1].ValueHash)
+		}
+	})
+
+	t.Run("sanitizes single-field and multi-field validation errors without leaking echoed values", func(t *testing.T) {
+		var mode string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch mode {
+			case "multi":
+				fmt.Fprint(w, `{"data":null,"errors":[{"message":"Multiple fields had errors.","extensions":{"fieldErrors":[{"fieldName":"OIDC.IssuerURL","message":"required to enable OIDC"},{"fieldName":"OIDC.ClientID","message":"required to enable OIDC"}],"isMultiFieldError":true}}]}`)
+			case "single":
+				fmt.Fprint(w, `{"data":null,"errors":[{"message":"integer value invalid: strconv.ParseInt: parsing \"super-secret-bad-int\": invalid syntax","extensions":{"fieldName":"\"Maintenance.AlertCleanupDays\".Value","isFieldError":true}}]}`)
+			}
+		}))
+		defer server.Close()
+
+		c, _ := New(server.URL, "token", true)
+		ctx := context.Background()
+
+		mode = "multi"
+		err := c.SetSystemConfig(ctx, []ConfigValueInput{{ID: "OIDC.Enable", Value: "true"}})
+		if err == nil || !strings.Contains(err.Error(), "OIDC.IssuerURL: required to enable OIDC") || !strings.Contains(err.Error(), "OIDC.ClientID: required to enable OIDC") {
+			t.Fatalf("expected formatted multi-field error, got: %v", err)
+		}
+
+		mode = "single"
+		err = c.SetSystemConfig(ctx, []ConfigValueInput{{ID: "Maintenance.AlertCleanupDays", Value: "super-secret-bad-int"}})
+		if err == nil || !strings.Contains(err.Error(), "Maintenance.AlertCleanupDays: integer value invalid: invalid syntax") {
+			t.Fatalf("expected normalized single-field error, got: %v", err)
+		}
+		if strings.Contains(err.Error(), "super-secret-bad-int") {
+			t.Fatalf("error leaked echoed input value: %v", err)
+		}
+	})
+}
