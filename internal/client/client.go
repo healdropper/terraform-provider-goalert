@@ -4,7 +4,10 @@ package client
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -205,7 +208,14 @@ func (c *Client) execute(ctx context.Context, operation string, variables any, t
 		Errors []struct {
 			Message    string `json:"message"`
 			Extensions struct {
-				Code string `json:"code"`
+				Code              string `json:"code"`
+				IsFieldError      bool   `json:"isFieldError"`
+				FieldName         string `json:"fieldName"`
+				IsMultiFieldError bool   `json:"isMultiFieldError"`
+				FieldErrors       []struct {
+					FieldName string `json:"fieldName"`
+					Message   string `json:"message"`
+				} `json:"fieldErrors"`
 			} `json:"extensions"`
 		} `json:"errors"`
 	}
@@ -213,6 +223,7 @@ func (c *Client) execute(ctx context.Context, operation string, variables any, t
 		return fmt.Errorf("%s: malformed GraphQL response", operation)
 	}
 	if len(envelope.Errors) > 0 {
+		var fieldErrs []string
 		for _, e := range envelope.Errors {
 			if e.Extensions.Code == "invalid_query" ||
 				strings.Contains(e.Message, "wrong query for API key") ||
@@ -222,6 +233,16 @@ func (c *Client) execute(ctx context.Context, operation string, variables any, t
 			if strings.Contains(e.Message, "currently in use") {
 				return fmt.Errorf("%s: %w: %s", operation, ErrInUse, e.Message)
 			}
+			if e.Extensions.IsMultiFieldError {
+				for _, fe := range e.Extensions.FieldErrors {
+					fieldErrs = append(fieldErrs, fmt.Sprintf("%s: %s", normalizeConfigFieldName(fe.FieldName), scrubFieldErrorMessage(fe.Message)))
+				}
+			} else if e.Extensions.IsFieldError && e.Extensions.FieldName != "" {
+				fieldErrs = append(fieldErrs, fmt.Sprintf("%s: %s", normalizeConfigFieldName(e.Extensions.FieldName), scrubFieldErrorMessage(e.Message)))
+			}
+		}
+		if len(fieldErrs) > 0 {
+			return fmt.Errorf("%s: validation failed: %s", operation, strings.Join(fieldErrs, "; "))
 		}
 		return fmt.Errorf("%s: GraphQL rejected the operation; check the canonical document, admin role, key expiry and input values (server details suppressed)", operation)
 	}
@@ -1524,4 +1545,95 @@ func (c *Client) SearchSlackUserGroups(ctx context.Context, search string) ([]Sl
 		return nil, err
 	}
 	return result.SlackUserGroups.Nodes, nil
+}
+
+type SystemConfigValue struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+	Value       string `json:"value"`
+	ValueHash   string `json:"-"`
+	Type        string `json:"type"`
+	Password    bool   `json:"password"`
+	Deprecated  string `json:"deprecated"`
+}
+
+type ConfigValueInput struct {
+	ID    string `json:"id"`
+	Value string `json:"value"`
+}
+
+// HashSystemConfigSecret computes the salted HMAC-SHA256 hex digest for a secret configuration value.
+func HashSystemConfigSecret(salt, value string) string {
+	mac := hmac.New(sha256.New, []byte(salt))
+	mac.Write([]byte(value))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func normalizeConfigFieldName(name string) string {
+	s := strings.TrimSpace(name)
+	s = strings.TrimSuffix(s, ".Value")
+	s = strings.Trim(s, `"`)
+	return s
+}
+
+func scrubFieldErrorMessage(msg string) string {
+	for {
+		start := strings.Index(msg, ": parsing \"")
+		if start == -1 {
+			break
+		}
+		rest := msg[start+len(": parsing \""):]
+		end := strings.Index(rest, "\": ")
+		if end == -1 {
+			break
+		}
+		prefix := msg[:start]
+		if idx := strings.LastIndex(prefix, ": strconv.Parse"); idx != -1 {
+			prefix = msg[:idx]
+		}
+		msg = prefix + ": " + rest[end+len("\": "):]
+	}
+	for {
+		start := strings.IndexByte(msg, '"')
+		if start == -1 {
+			break
+		}
+		end := strings.IndexByte(msg[start+1:], '"')
+		if end == -1 {
+			break
+		}
+		msg = msg[:start] + "<redacted>" + msg[start+1+end+1:]
+	}
+	return strings.TrimSpace(msg)
+}
+
+func (c *Client) ReadSystemConfig(ctx context.Context, salt string) ([]SystemConfigValue, error) {
+	var result struct {
+		Config []SystemConfigValue `json:"config"`
+	}
+	if err := c.execute(ctx, "ProviderReadSystemConfig", nil, &result); err != nil {
+		return nil, err
+	}
+	for i := range result.Config {
+		if result.Config[i].Password {
+			if salt != "" {
+				result.Config[i].ValueHash = HashSystemConfigSecret(salt, result.Config[i].Value)
+			}
+			result.Config[i].Value = ""
+		}
+	}
+	return result.Config, nil
+}
+
+func (c *Client) SetSystemConfig(ctx context.Context, input []ConfigValueInput) error {
+	var result struct {
+		Success bool `json:"setConfig"`
+	}
+	if err := c.execute(ctx, "ProviderSetSystemConfig", map[string]any{"input": input}, &result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return errors.New("set system config: API did not confirm success")
+	}
+	return nil
 }

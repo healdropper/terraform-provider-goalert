@@ -425,3 +425,10 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Goal: define the canonical resource contract and Terraform Registry documentation under Gate `CFG-SPEC` ([#90](https://github.com/healdropper/terraform-provider-goalert/issues/90)).
 - Added [docs/specs/goalert-system-config.md](docs/specs/goalert-system-config.md) and [docs/resources/system_config.md](docs/resources/system_config.md), and updated [docs/index.md](docs/index.md) and [README.md](README.md) for 15 managed resources.
 - Verification: `make PYTHON=python3 check-format`, `make test`, and `git diff --check` passed.
+
+## 2026-10-28 - Add system config GraphQL operations, HMAC scrubbing, and sanitized field errors (CFG-CLIENT, #91)
+
+- Goal: implement GraphQL client operations and plaintext secret scrubbing under Gate `CFG-CLIENT` ([#91](https://github.com/healdropper/terraform-provider-goalert/issues/91)).
+- Added `ProviderReadSystemConfig` and `ProviderSetSystemConfig` to [internal/client/operations.graphql](internal/client/operations.graphql).
+- Implemented `ReadSystemConfig`, `SetSystemConfig`, `HashSystemConfigSecret`, and sanitized `isFieldError` / `isMultiFieldError` parsing in [internal/client/client.go](internal/client/client.go) with unit tests in [internal/client/client_test.go](internal/client/client_test.go).
+- Verification: `go test -v ./internal/client -run TestSystemConfigOperations`, `make PYTHON=python3 check-format test vet`, and `git diff --check` passed.

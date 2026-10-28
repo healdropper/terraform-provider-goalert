@@ -430,3 +430,16 @@ query ProviderReadRotationLabels($id: ID!) {
     }
   }
 }
+query ProviderReadSystemConfig {
+  config(all: true) {
+    id
+    description
+    value
+    type
+    password
+    deprecated
+  }
+}
+mutation ProviderSetSystemConfig($input: [ConfigValueInput!]) {
+  setConfig(input: $input)
+}
