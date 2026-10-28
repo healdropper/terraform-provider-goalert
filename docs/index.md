@@ -43,7 +43,7 @@ When upgrading the provider to a minor/major version that introduces new resourc
 
 ## Supported Resources & Data Sources
 
-### Managed Resources (14)
+### Managed Resources (15)
 - `goalert_service` — Alerted services bound to an escalation policy
 - `goalert_escalation_policy` — Escalation policies with ordered steps (`user_ids`, `rotation_ids`, `schedule_ids`, `webhook_urls`, `multi_ack`)
 - `goalert_integration_key` — Service ingress keys (`generic`, `grafana`, `site24x7`, `prometheusAlertmanager`, `email`)
@@ -58,6 +58,7 @@ When upgrading the provider to a minor/major version that introduces new resourc
 - `goalert_schedule_rule` — Time-of-day and weekday coverage rules binding rotations or users to a schedule
 - `goalert_user_override` — Temporary schedule coverage overrides (`add`, `remove`, or `replace` user)
 - `goalert_system_limit` — GoAlert system-wide safety and rate limits
+- `goalert_system_config` — GoAlert global system configuration (`settings`, write-only `secrets_wo`, and `secret_hashes`)
 
 ### Data Sources (9)
 - `goalert_service`
