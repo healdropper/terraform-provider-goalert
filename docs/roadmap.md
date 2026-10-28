@@ -1,7 +1,7 @@
 # Provider roadmap
 
 Owner: healdropper.
-Status: Milestones 1 through 10 completed (`v1.0.0` GA published on the HashiCorp Terraform Registry); Milestone 11 ([System Configuration Management](milestones/system-configuration-management.md)) active.
+Status: Milestones 1 through 11 completed (`v1.0.0` GA published on the HashiCorp Terraform Registry; `goalert_system_config` delivered in Milestone 11 for `v1.1.0`).
 Authority: [vision](specs/00_VISION.md), [lifecycle](specs/spec-driven-lifecycle.md).
 Evidence: [baseline](sprints/sprint-0-baseline.md).
 Delivery milestones represent human-scoped goals and functional capability themes decoupled from strict SemVer patch increments.
@@ -44,6 +44,7 @@ Delivery milestones represent human-scoped goals and functional capability theme
   Resources: `goalert_label`, extended `goalert_escalation_policy` (`multi_ack`), extended `goalert_user_contact_method` (`enable_status_updates`, `private`, `status_updates`).
   Closed on GitHub.
 - **Registry Publication and GA (`v1.0.0`)**: [registry publication and GA](milestones/registry-publication-and-ga.md), completed on 2026-10-02 through [PR #83](https://github.com/healdropper/terraform-provider-goalert/pull/83), [PR #84](https://github.com/healdropper/terraform-provider-goalert/pull/84), [PR #85](https://github.com/healdropper/terraform-provider-goalert/pull/85), [PR #86](https://github.com/healdropper/terraform-provider-goalert/pull/86), and [`v1.0.0` Release](https://github.com/healdropper/terraform-provider-goalert/releases/tag/v1.0.0). Published on the HashiCorp Terraform Registry as [`healdropper/goalert` `v1.0.0`](https://registry.terraform.io/providers/healdropper/goalert/latest). Closed on GitHub.
+- **System Configuration Management (`v1.1.0`)**: [system configuration management](milestones/system-configuration-management.md), completed on 2026-10-28 through [PR #94](https://github.com/healdropper/terraform-provider-goalert/pull/94), [PR #95](https://github.com/healdropper/terraform-provider-goalert/pull/95), [PR #96](https://github.com/healdropper/terraform-provider-goalert/pull/96), [PR #97](https://github.com/healdropper/terraform-provider-goalert/pull/97), [PR #98](https://github.com/healdropper/terraform-provider-goalert/pull/98), and [PR #99](https://github.com/healdropper/terraform-provider-goalert/pull/99). Resources: `goalert_system_config` (`settings`, write-only `secrets_wo`, salted `HMAC-SHA256` `secret_hashes`). Closed on GitHub.
 
 ## Backlog
 
@@ -53,7 +54,7 @@ Delivery milestones represent human-scoped goals and functional capability theme
 | External chat adapter and real source-to-chat demonstration | C, Proposed; consumer-owned delivery | healdropper | Outside provider runtime (#11) |
 | Independent Grafana availability | C, Backlog | healdropper | [Availability RFC](specs/grafana-availability.md) (#10) |
 | Public visibility / Registry / production adoption | Three separate decisions | healdropper | Scheduled for Registry Publication milestone; [Existing gates](releases.md#three-independent-decisions) |
-| Declarative GoAlert system configuration (`goalert_system_config`) | C, Scheduled in Milestone 11 | healdropper | [System Configuration Management](milestones/system-configuration-management.md) ([#88](https://github.com/healdropper/terraform-provider-goalert/issues/88), [#89](https://github.com/healdropper/terraform-provider-goalert/issues/89)–[#93](https://github.com/healdropper/terraform-provider-goalert/issues/93)) |
+| Declarative GoAlert system configuration (`goalert_system_config`) | C, Completed in Milestone 11 | healdropper | [System Configuration Management](milestones/system-configuration-management.md) ([#88](https://github.com/healdropper/terraform-provider-goalert/issues/88), [#89](https://github.com/healdropper/terraform-provider-goalert/issues/89)–[#93](https://github.com/healdropper/terraform-provider-goalert/issues/93)) |
 
 ## Delivery tracking
 

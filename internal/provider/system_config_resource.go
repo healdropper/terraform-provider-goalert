@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -190,6 +191,22 @@ func generateSystemConfigSalt() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
+func decodePrivateSalt(raw []byte) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return s
+	}
+	return string(raw)
+}
+
+func encodePrivateSalt(salt string) []byte {
+	b, _ := json.Marshal(salt)
+	return b
+}
+
 func (r *systemConfigResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -261,18 +278,13 @@ func (r *systemConfigResource) ModifyPlan(ctx context.Context, req resource.Modi
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	salt := string(rawSalt)
+	salt := decodePrivateSalt(rawSalt)
 	if salt == "" {
-		var err error
-		salt, err = generateSystemConfigSalt()
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to generate secret hash salt", err.Error())
-			return
-		}
-		resp.Diagnostics.Append(resp.Private.SetKey(ctx, systemConfigPrivateSaltKey, []byte(salt))...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
+		// During Create (when req.State.Raw.IsNull()), Private state is not yet initialized.
+		// Leave secret_hashes Unknown so Create can generate and persist the salt in resp.Private.
+		plan.SecretHashes = types.MapUnknown(types.StringType)
+		resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+		return
 	}
 
 	hashElems := make(map[string]attr.Value, len(secretsMap))
@@ -390,7 +402,7 @@ func (r *systemConfigResource) Create(ctx context.Context, req resource.CreateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	salt := string(rawSalt)
+	salt := decodePrivateSalt(rawSalt)
 	if salt == "" {
 		var err error
 		salt, err = generateSystemConfigSalt()
@@ -398,7 +410,7 @@ func (r *systemConfigResource) Create(ctx context.Context, req resource.CreateRe
 			resp.Diagnostics.AddError("Failed to generate secret hash salt", err.Error())
 			return
 		}
-		resp.Diagnostics.Append(resp.Private.SetKey(ctx, systemConfigPrivateSaltKey, []byte(salt))...)
+		resp.Diagnostics.Append(resp.Private.SetKey(ctx, systemConfigPrivateSaltKey, encodePrivateSalt(salt))...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -424,7 +436,7 @@ func (r *systemConfigResource) Read(ctx context.Context, req resource.ReadReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	salt := string(rawSalt)
+	salt := decodePrivateSalt(rawSalt)
 	if salt == "" {
 		var err error
 		salt, err = generateSystemConfigSalt()
@@ -432,7 +444,7 @@ func (r *systemConfigResource) Read(ctx context.Context, req resource.ReadReques
 			resp.Diagnostics.AddError("Failed to generate secret hash salt", err.Error())
 			return
 		}
-		resp.Diagnostics.Append(resp.Private.SetKey(ctx, systemConfigPrivateSaltKey, []byte(salt))...)
+		resp.Diagnostics.Append(resp.Private.SetKey(ctx, systemConfigPrivateSaltKey, encodePrivateSalt(salt))...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -492,7 +504,7 @@ func (r *systemConfigResource) Update(ctx context.Context, req resource.UpdateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	salt := string(rawSalt)
+	salt := decodePrivateSalt(rawSalt)
 	if salt == "" {
 		var err error
 		salt, err = generateSystemConfigSalt()
@@ -501,7 +513,7 @@ func (r *systemConfigResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 	}
-	resp.Diagnostics.Append(resp.Private.SetKey(ctx, systemConfigPrivateSaltKey, []byte(salt))...)
+	resp.Diagnostics.Append(resp.Private.SetKey(ctx, systemConfigPrivateSaltKey, encodePrivateSalt(salt))...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -558,7 +570,7 @@ func (r *systemConfigResource) ImportState(ctx context.Context, req resource.Imp
 		resp.Diagnostics.AddError("Failed to generate secret hash salt", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(resp.Private.SetKey(ctx, systemConfigPrivateSaltKey, []byte(salt))...)
+	resp.Diagnostics.Append(resp.Private.SetKey(ctx, systemConfigPrivateSaltKey, encodePrivateSalt(salt))...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
