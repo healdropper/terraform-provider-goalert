@@ -1364,7 +1364,7 @@ variable "rule_end" {
 }
 variable "override_end" {
   type    = string
-  default = "2026-10-11T00:00:00Z"
+  default = "2099-10-11T00:00:00Z"
 }
 
 resource "goalert_user" "alice" {
@@ -1408,7 +1408,7 @@ resource "goalert_schedule_rule" "weekday_coverage" {
 
 resource "goalert_user_override" "swap" {
   schedule_id    = goalert_schedule.engineering.id
-  start_time     = "2026-10-10T00:00:00Z"
+  start_time     = "2099-10-10T00:00:00Z"
   end_time       = var.override_end
   add_user_id    = goalert_user.bob.id
   remove_user_id = goalert_user.alice.id
@@ -1450,7 +1450,7 @@ output "ds_sched_id" {
 """
         (directory/"main.tf").write_text(config)
 
-        def variables(name="Engineering Schedule", desc="Primary on-call shift calendar", rule_start="09:00", rule_end="17:00", override_end="2026-10-11T00:00:00Z"):
+        def variables(name="Engineering Schedule", desc="Primary on-call shift calendar", rule_start="09:00", rule_end="17:00", override_end="2099-10-11T00:00:00Z"):
             (directory/"terraform.tfvars.json").write_text(json.dumps({
                 "sched_name": name,
                 "sched_desc": desc,
@@ -1517,7 +1517,7 @@ output "ds_sched_id" {
         print("PASS: data.goalert_schedule lookups by id and name verified.", flush=True)
 
         # 3. In-place update (schedule name/desc, rule hours, override end = 3 changes)
-        variables("Engineering Schedule Renamed", "Updated shift calendar", rule_start="08:00", rule_end="18:00", override_end="2026-10-12T00:00:00Z")
+        variables("Engineering Schedule Renamed", "Updated shift calendar", rule_start="08:00", rule_end="18:00", override_end="2099-10-12T00:00:00Z")
         plan(3)
         tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
         clean()
@@ -1529,7 +1529,7 @@ output "ds_sched_id" {
         assert up_sched["name"] == "Engineering Schedule Renamed"
         assert up_rule["start_time"] == "08:00"
         assert up_rule["end_time"] == "18:00"
-        assert up_uo["end_time"] == "2026-10-12T00:00:00Z"
+        assert up_uo["end_time"] == "2099-10-12T00:00:00Z"
         print("PASS: in-place update of schedule, rule hours, and override duration verified.", flush=True)
 
         # 4. Drift detection and repair
