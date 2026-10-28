@@ -432,3 +432,12 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
 - Added `ProviderReadSystemConfig` and `ProviderSetSystemConfig` to [internal/client/operations.graphql](internal/client/operations.graphql).
 - Implemented `ReadSystemConfig`, `SetSystemConfig`, `HashSystemConfigSecret`, and sanitized `isFieldError` / `isMultiFieldError` parsing in [internal/client/client.go](internal/client/client.go) with unit tests in [internal/client/client_test.go](internal/client/client_test.go).
 - Verification: `go test -v ./internal/client -run TestSystemConfigOperations`, `make PYTHON=python3 check-format test vet`, and `git diff --check` passed.
+
+## 2026-10-28 - Implement `goalert_system_config` resource with write-only secrets and zero-diff import (CFG-RESOURCE, #92)
+
+- Goal: implement `goalert_system_config` resource under Gate `CFG-RESOURCE` ([#92](https://github.com/healdropper/terraform-provider-goalert/issues/92)).
+- Added [internal/provider/system_config_resource.go](internal/provider/system_config_resource.go), registered `NewSystemConfigResource` in [internal/provider/provider.go](internal/provider/provider.go), and added unit tests in [internal/provider/system_config_resource_test.go](internal/provider/system_config_resource_test.go):
+  - Enforced strict partitioning between the 59 `settings` keys (`password: false`) and 9 `secrets_wo` keys (`password: true`, `WriteOnly: true`).
+  - Implemented per-resource 256-bit salt persistence in `resp.Private` (`system_config_salt`) and `ModifyPlan` salted `HMAC-SHA256` drift comparison in `secret_hashes`.
+  - Implemented unmanage-on-remove update semantics, state-only `Delete` no-op, and `system` / `system:<keys>` zero-diff import.
+- Verification: `go test -v ./internal/provider -run TestSystemConfig`, `make PYTHON=python3 check-format test vet build`, and `git diff --check` passed.

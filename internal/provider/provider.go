@@ -79,6 +79,7 @@ func (p *goalertProvider) Resources(context.Context) []func() resource.Resource 
 		NewScheduleRuleResource,
 		NewUserOverrideResource,
 		NewSystemLimitResource,
+		NewSystemConfigResource,
 	}
 }
 func (p *goalertProvider) DataSources(context.Context) []func() datasource.DataSource {
