@@ -18,10 +18,12 @@ Within `resource "goalert_escalation_policy"`:
 | `webhook_action` | Block List | Optional | Webhook notification URLs (`url`). |
 | `user_ids` | List(String) | Optional | Set/list of operator user IDs to notify in this step. |
 | `rotation_ids` | List(String) | Optional | Set/list of rotation IDs to notify in this step. |
+| `schedule_ids` | List(String) | Optional | Set/list of schedule IDs to notify in this step. |
+| `slack_channel_ids` | List(String) | Optional | Slack channel IDs to post to in this step. |
 
 ### Step Validation Rule
 Each step must specify at least one target or action:
-`len(webhook_action) > 0 || len(user_ids) > 0 || len(rotation_ids) > 0`.
+`len(webhook_action) > 0 || len(user_ids) > 0 || len(rotation_ids) > 0 || len(schedule_ids) > 0 || len(slack_channel_ids) > 0`.
 
 ## 3. Mapping to GraphQL Operations
 
@@ -36,4 +38,5 @@ Each step must specify at least one target or action:
    - Parse `step.actions` from GraphQL response:
      - If `action.type == "builtin-user"`: extract `action.args.user_id` into `user_ids`.
      - If `action.type == "builtin-rotation"`: extract `action.args.rotation_id` into `rotation_ids`.
+     - If `action.type == "builtin-slack-channel"`: extract `action.args.slack_channel_id` into `slack_channel_ids`; create and update send `{ type: "builtin-slack-channel", args: { "slack_channel_id": id } }`.
      - If `action.type == "webhook"`: extract `action.args.url` into `webhook_action`.

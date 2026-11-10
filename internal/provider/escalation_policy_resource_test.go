@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/healdropper/terraform-provider-goalert/internal/client"
 )
@@ -239,5 +240,118 @@ func TestModelFromEscalationPolicyTargets(t *testing.T) {
 	}
 	if len(s.WebhookActions) != 1 || s.WebhookActions[0].URL.ValueString() != "https://example.com" {
 		t.Errorf("expected webhook action, got: %v", s.WebhookActions)
+	}
+}
+
+func TestEscalationPolicyStepSchemaSlackChannelIDs(t *testing.T) {
+	r := NewEscalationPolicyResource()
+	resp := resource.SchemaResponse{}
+	r.Schema(context.Background(), resource.SchemaRequest{}, &resp)
+
+	step, ok := resp.Schema.Blocks["step"].(schema.ListNestedBlock)
+	if !ok {
+		t.Fatalf("step block has unexpected type %T", resp.Schema.Blocks["step"])
+	}
+	if _, ok := step.NestedObject.Attributes["slack_channel_ids"]; !ok {
+		t.Fatal("missing step attribute: slack_channel_ids")
+	}
+}
+
+func TestModelFromEscalationPolicySlackChannels(t *testing.T) {
+	ep := &client.EscalationPolicy{
+		ID:   "ep-1",
+		Name: "Slack first",
+		Steps: []client.EscalationPolicyStep{
+			{
+				ID:           "s-1",
+				StepNumber:   0,
+				DelayMinutes: 5,
+				Actions: []client.Destination{
+					{Type: "builtin-slack-channel", Args: map[string]string{"slack_channel_id": "C0123ABCD"}},
+					{Type: "builtin-user", Args: map[string]string{"user_id": "user-uuid-1"}},
+				},
+			},
+		},
+	}
+
+	s := modelFromEscalationPolicy(ep, nil).Steps[0]
+	if len(s.SlackChannelIDs) != 1 || s.SlackChannelIDs[0].ValueString() != "C0123ABCD" {
+		t.Errorf("expected slack channel C0123ABCD, got: %v", s.SlackChannelIDs)
+	}
+	if len(s.UserIDs) != 1 {
+		t.Errorf("expected the user target to stay, got: %v", s.UserIDs)
+	}
+}
+
+func TestModelFromEscalationPolicyEmptySlackChannelsKeepPriorEmptyList(t *testing.T) {
+	ep := &client.EscalationPolicy{
+		ID: "ep-1",
+		Steps: []client.EscalationPolicyStep{
+			{ID: "s-1", DelayMinutes: 5, Actions: []client.Destination{
+				{Type: "builtin-user", Args: map[string]string{"user_id": "u1"}},
+			}},
+		},
+	}
+	prior := &escalationPolicyModel{Steps: []stepModel{{SlackChannelIDs: []types.String{}}}}
+
+	s := modelFromEscalationPolicy(ep, prior).Steps[0]
+	if s.SlackChannelIDs == nil || len(s.SlackChannelIDs) != 0 {
+		t.Errorf("expected empty non-nil list, got: %#v", s.SlackChannelIDs)
+	}
+}
+
+func TestStepMatchesSlackChannels(t *testing.T) {
+	serverStep := client.EscalationPolicyStep{
+		DelayMinutes: 5,
+		Actions: []client.Destination{
+			{Type: "builtin-slack-channel", Args: map[string]string{"slack_channel_id": "C1"}},
+		},
+	}
+	plan := stepModel{
+		DelayMinutes:    types.Int64Value(5),
+		MultiAck:        types.BoolValue(false),
+		SlackChannelIDs: []types.String{types.StringValue("C1")},
+	}
+	if !stepMatches(serverStep, plan) {
+		t.Error("expected matching slack channel to match")
+	}
+
+	plan.SlackChannelIDs = []types.String{types.StringValue("C2")}
+	if stepMatches(serverStep, plan) {
+		t.Error("expected different slack channel to not match")
+	}
+
+	plan.SlackChannelIDs = nil
+	if stepMatches(serverStep, plan) {
+		t.Error("expected removed slack channel to not match")
+	}
+}
+
+func TestStepActionsIncludesSlackChannels(t *testing.T) {
+	actions := stepActions(stepModel{
+		UserIDs:         []types.String{types.StringValue("u1")},
+		SlackChannelIDs: []types.String{types.StringValue("C1"), types.StringValue("C2")},
+	})
+
+	var got []string
+	for _, a := range actions {
+		if a.Type == "builtin-slack-channel" {
+			got = append(got, a.Args["slack_channel_id"])
+		}
+	}
+	if len(got) != 2 || got[0] != "C1" || got[1] != "C2" {
+		t.Errorf("expected slack actions C1, C2 in order, got: %v", got)
+	}
+	if len(actions) != 3 {
+		t.Errorf("expected 3 actions, got %d", len(actions))
+	}
+}
+
+func TestStepHasTargetsSlackOnly(t *testing.T) {
+	if !stepHasTargets(stepModel{SlackChannelIDs: []types.String{types.StringValue("C1")}}) {
+		t.Error("expected a step with only a slack channel to be valid")
+	}
+	if stepHasTargets(stepModel{}) {
+		t.Error("expected a step without targets to be invalid")
 	}
 }
