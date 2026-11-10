@@ -45,7 +45,7 @@ When upgrading the provider to a minor/major version that introduces new resourc
 
 ### Managed Resources (15)
 - `goalert_service` — Alerted services bound to an escalation policy
-- `goalert_escalation_policy` — Escalation policies with ordered steps (`user_ids`, `rotation_ids`, `schedule_ids`, `webhook_urls`, `multi_ack`)
+- `goalert_escalation_policy` — Escalation policies with ordered steps (`user_ids`, `rotation_ids`, `schedule_ids`, `slack_channel_ids`, `webhook_urls`, `multi_ack`)
 - `goalert_integration_key` — Service ingress keys (`generic`, `grafana`, `site24x7`, `prometheusAlertmanager`, `email`)
 - `goalert_heartbeat_monitor` — Dead-man's-switch heartbeat monitors on a service
 - `goalert_service_label` — Key/value labels on a service

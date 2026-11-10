@@ -13,7 +13,7 @@ Related: [Issue #6](https://github.com/healdropper/terraform-provider-goalert/is
 | --- | --- | --- |
 | POL-01 | Generic Plugin Framework resource | Resource type `goalert_escalation_policy` implemented with `hashicorp/terraform-plugin-framework`. |
 | POL-02 | Attributes | `id` (Computed String), `name` (Required String), `description` (Optional/Computed String, default `""`), `repeat` (Optional/Computed Int64, default `0`). |
-| POL-03 | Nested step blocks | Ordered list of `step` blocks: `id` (Computed String), `delay_minutes` (Required Int64, minimum 1), `step_number` (Computed Int64, 0-indexed), `multi_ack` (Optional/Computed Bool, default `false`), `user_ids` (Optional List of String), `rotation_ids` (Optional List of String), `schedule_ids` (Optional List of String), `webhook_action` (Optional list of blocks). |
+| POL-03 | Nested step blocks | Ordered list of `step` blocks: `id` (Computed String), `delay_minutes` (Required Int64, minimum 1), `step_number` (Computed Int64, 0-indexed), `multi_ack` (Optional/Computed Bool, default `false`), `user_ids` (Optional List of String), `rotation_ids` (Optional List of String), `schedule_ids` (Optional List of String), `slack_channel_ids` (Optional List of String), `webhook_action` (Optional list of blocks). |
 | POL-04 | Webhook action block | `url` (Required String, must include valid scheme `http://` or `https://`). Mapped to GoAlert action `builtin-webhook` with argument `webhook_url`. |
 | POL-05 | Atomic create | `createEscalationPolicy` submits inline steps, `multiAck`, and actions in a single atomic mutation when creating the policy. |
 | POL-06 | Step reconciliation & ordering | Updates reconcile step definitions: modifying steps (including `multiAck`) via `updateEscalationPolicyStep`, creating new steps via `createEscalationPolicyStep`, and reordering/pruning via `updateEscalationPolicy(stepIDs: [...])`. Omitted step IDs are removed automatically by GoAlert. |
@@ -60,6 +60,7 @@ resource "goalert_escalation_policy" "example" {
   - `user_ids` (List of String, Optional): Operator user UUIDs targeted in this step.
   - `rotation_ids` (List of String, Optional): Rotation UUIDs targeted in this step.
   - `schedule_ids` (List of String, Optional): Schedule UUIDs targeted in this step.
+  - `slack_channel_ids` (List of String, Optional): Slack channel IDs posted to in this step. Mapped to GoAlert action `builtin-slack-channel` with argument `slack_channel_id`; requires GoAlert's Slack integration.
   - `webhook_action` (List of Objects, Optional): Webhook notification targets:
     - `url` (String, Required): Target webhook URL. Scheme `http://` or `https://` is required.
 

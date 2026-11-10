@@ -16,7 +16,7 @@ flowchart LR
 
 - **15 Managed Resources**:
   - **Services & Ingress**: [`goalert_service`](docs/resources/service.md), [`goalert_integration_key`](docs/resources/integration_key.md), [`goalert_heartbeat_monitor`](docs/resources/heartbeat_monitor.md), [`goalert_service_label`](docs/resources/service_label.md), [`goalert_label`](docs/resources/label.md) (polymorphic across `service`, `escalationPolicy`, `schedule`, and `rotation`).
-  - **Escalation Policies**: [`goalert_escalation_policy`](docs/resources/escalation_policy.md) (ordered steps with `user_ids`, `rotation_ids`, `schedule_ids`, `webhook_urls`, and `multi_ack`).
+  - **Escalation Policies**: [`goalert_escalation_policy`](docs/resources/escalation_policy.md) (ordered steps with `user_ids`, `rotation_ids`, `schedule_ids`, `slack_channel_ids`, `webhook_urls`, and `multi_ack`).
   - **Users & Notification Channels**: [`goalert_user`](docs/resources/user.md), [`goalert_user_contact_method`](docs/resources/user_contact_method.md) (`SMS`, `VOICE`, `EMAIL`, `WEBHOOK`, `SLACK_DM`, `enable_status_updates`, `private`), [`goalert_user_notification_rule`](docs/resources/user_notification_rule.md).
   - **Rotations & Schedules**: [`goalert_rotation`](docs/resources/rotation.md), [`goalert_schedule`](docs/resources/schedule.md), [`goalert_schedule_rule`](docs/resources/schedule_rule.md), [`goalert_user_override`](docs/resources/user_override.md).
   - **System Governance**: [`goalert_system_limit`](docs/resources/system_limit.md), [`goalert_system_config`](docs/resources/system_config.md).

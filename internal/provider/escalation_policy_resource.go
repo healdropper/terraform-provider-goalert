@@ -39,14 +39,15 @@ type escalationPolicyModel struct {
 }
 
 type stepModel struct {
-	ID             types.String         `tfsdk:"id"`
-	StepNumber     types.Int64          `tfsdk:"step_number"`
-	DelayMinutes   types.Int64          `tfsdk:"delay_minutes"`
-	MultiAck       types.Bool           `tfsdk:"multi_ack"`
-	UserIDs        []types.String       `tfsdk:"user_ids"`
-	RotationIDs    []types.String       `tfsdk:"rotation_ids"`
-	ScheduleIDs    []types.String       `tfsdk:"schedule_ids"`
-	WebhookActions []webhookActionModel `tfsdk:"webhook_action"`
+	ID              types.String         `tfsdk:"id"`
+	StepNumber      types.Int64          `tfsdk:"step_number"`
+	DelayMinutes    types.Int64          `tfsdk:"delay_minutes"`
+	MultiAck        types.Bool           `tfsdk:"multi_ack"`
+	UserIDs         []types.String       `tfsdk:"user_ids"`
+	RotationIDs     []types.String       `tfsdk:"rotation_ids"`
+	ScheduleIDs     []types.String       `tfsdk:"schedule_ids"`
+	SlackChannelIDs []types.String       `tfsdk:"slack_channel_ids"`
+	WebhookActions  []webhookActionModel `tfsdk:"webhook_action"`
 }
 
 type webhookActionModel struct {
@@ -137,6 +138,11 @@ func (r *escalationPolicyResource) Schema(_ context.Context, _ resource.SchemaRe
 							Optional:            true,
 							MarkdownDescription: "List of schedule IDs to target in this escalation step.",
 						},
+						"slack_channel_ids": schema.ListAttribute{
+							ElementType:         types.StringType,
+							Optional:            true,
+							MarkdownDescription: "List of Slack channel IDs to post to in this escalation step. Requires GoAlert's Slack integration.",
+						},
 					},
 					Blocks: map[string]schema.Block{
 						"webhook_action": schema.ListNestedBlock{
@@ -213,6 +219,7 @@ func modelFromEscalationPolicy(ep *client.EscalationPolicy, prior *escalationPol
 		var userIDs []types.String
 		var rotationIDs []types.String
 		var scheduleIDs []types.String
+		var slackChannelIDs []types.String
 		for _, action := range step.Actions {
 			switch action.Type {
 			case "builtin-webhook":
@@ -234,6 +241,10 @@ func modelFromEscalationPolicy(ep *client.EscalationPolicy, prior *escalationPol
 			case "builtin-schedule":
 				if sid, ok := action.Args["schedule_id"]; ok && sid != "" {
 					scheduleIDs = append(scheduleIDs, types.StringValue(sid))
+				}
+			case "builtin-slack-channel":
+				if cid, ok := action.Args["slack_channel_id"]; ok && cid != "" {
+					slackChannelIDs = append(slackChannelIDs, types.StringValue(cid))
 				}
 			}
 		}
@@ -278,11 +289,75 @@ func modelFromEscalationPolicy(ep *client.EscalationPolicy, prior *escalationPol
 			sm.ScheduleIDs = scheduleIDs
 		}
 
+		if len(slackChannelIDs) == 0 {
+			if priorStep != nil && priorStep.SlackChannelIDs != nil && len(priorStep.SlackChannelIDs) == 0 {
+				sm.SlackChannelIDs = []types.String{}
+			} else {
+				sm.SlackChannelIDs = nil
+			}
+		} else {
+			sm.SlackChannelIDs = slackChannelIDs
+		}
+
 		m.Steps[i] = sm
 	}
 
 	return m
 }
+
+// stepHasTargets reports whether a step notifies anyone; GoAlert rejects empty steps.
+func stepHasTargets(s stepModel) bool {
+	return len(s.WebhookActions) > 0 || len(s.UserIDs) > 0 || len(s.RotationIDs) > 0 ||
+		len(s.ScheduleIDs) > 0 || len(s.SlackChannelIDs) > 0
+}
+
+// stepActions maps a step's targets to GoAlert destinations, shared by create and update.
+func stepActions(s stepModel) []client.DestinationInput {
+	var actions []client.DestinationInput
+	for _, uid := range s.UserIDs {
+		actions = append(actions, client.DestinationInput{
+			Type: "builtin-user",
+			Args: map[string]string{
+				"user_id": uid.ValueString(),
+			},
+		})
+	}
+	for _, rid := range s.RotationIDs {
+		actions = append(actions, client.DestinationInput{
+			Type: "builtin-rotation",
+			Args: map[string]string{
+				"rotation_id": rid.ValueString(),
+			},
+		})
+	}
+	for _, sid := range s.ScheduleIDs {
+		actions = append(actions, client.DestinationInput{
+			Type: "builtin-schedule",
+			Args: map[string]string{
+				"schedule_id": sid.ValueString(),
+			},
+		})
+	}
+	for _, cid := range s.SlackChannelIDs {
+		actions = append(actions, client.DestinationInput{
+			Type: "builtin-slack-channel",
+			Args: map[string]string{
+				"slack_channel_id": cid.ValueString(),
+			},
+		})
+	}
+	for _, act := range s.WebhookActions {
+		actions = append(actions, client.DestinationInput{
+			Type: "builtin-webhook",
+			Args: map[string]string{
+				"webhook_url": act.URL.ValueString(),
+			},
+		})
+	}
+	return actions
+}
+
+const stepTargetsError = "step %d must specify at least one target (user_ids, rotation_ids, schedule_ids, slack_channel_ids) or webhook_action"
 
 func (r *escalationPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan escalationPolicyModel
@@ -308,8 +383,8 @@ func (r *escalationPolicyResource) Create(ctx context.Context, req resource.Crea
 	if len(plan.Steps) > 0 {
 		input.Steps = make([]client.CreateEscalationPolicyStepInput, len(plan.Steps))
 		for i, s := range plan.Steps {
-			if len(s.WebhookActions) == 0 && len(s.UserIDs) == 0 && len(s.RotationIDs) == 0 && len(s.ScheduleIDs) == 0 {
-				resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf("step %d must specify at least one target (user_ids, rotation_ids, schedule_ids) or webhook_action", i))
+			if !stepHasTargets(s) {
+				resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf(stepTargetsError, i))
 				return
 			}
 			multiAck := s.MultiAck.ValueBool()
@@ -317,39 +392,7 @@ func (r *escalationPolicyResource) Create(ctx context.Context, req resource.Crea
 				DelayMinutes: s.DelayMinutes.ValueInt64(),
 				MultiAck:     &multiAck,
 			}
-			var actions []client.DestinationInput
-			for _, uid := range s.UserIDs {
-				actions = append(actions, client.DestinationInput{
-					Type: "builtin-user",
-					Args: map[string]string{
-						"user_id": uid.ValueString(),
-					},
-				})
-			}
-			for _, rid := range s.RotationIDs {
-				actions = append(actions, client.DestinationInput{
-					Type: "builtin-rotation",
-					Args: map[string]string{
-						"rotation_id": rid.ValueString(),
-					},
-				})
-			}
-			for _, sid := range s.ScheduleIDs {
-				actions = append(actions, client.DestinationInput{
-					Type: "builtin-schedule",
-					Args: map[string]string{
-						"schedule_id": sid.ValueString(),
-					},
-				})
-			}
-			for _, act := range s.WebhookActions {
-				actions = append(actions, client.DestinationInput{
-					Type: "builtin-webhook",
-					Args: map[string]string{
-						"webhook_url": act.URL.ValueString(),
-					},
-				})
-			}
+			actions := stepActions(s)
 			stepInput.Actions = actions
 			input.Steps[i] = stepInput
 		}
@@ -419,6 +462,7 @@ func stepMatches(serverStep client.EscalationPolicyStep, planStep stepModel) boo
 	var serverUsers []string
 	var serverRotations []string
 	var serverSchedules []string
+	var serverSlackChannels []string
 	for _, a := range serverStep.Actions {
 		switch a.Type {
 		case "builtin-user":
@@ -432,6 +476,10 @@ func stepMatches(serverStep client.EscalationPolicyStep, planStep stepModel) boo
 		case "builtin-schedule":
 			if sid, ok := a.Args["schedule_id"]; ok && sid != "" {
 				serverSchedules = append(serverSchedules, sid)
+			}
+		case "builtin-slack-channel":
+			if cid, ok := a.Args["slack_channel_id"]; ok && cid != "" {
+				serverSlackChannels = append(serverSlackChannels, cid)
 			}
 		}
 	}
@@ -463,6 +511,15 @@ func stepMatches(serverStep client.EscalationPolicyStep, planStep stepModel) boo
 		}
 	}
 
+	if len(serverSlackChannels) != len(planStep.SlackChannelIDs) {
+		return false
+	}
+	for i := range planStep.SlackChannelIDs {
+		if serverSlackChannels[i] != planStep.SlackChannelIDs[i].ValueString() {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -490,44 +547,12 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 
 	var stepIDs []string
 	for i, pStep := range plan.Steps {
-		if len(pStep.WebhookActions) == 0 && len(pStep.UserIDs) == 0 && len(pStep.RotationIDs) == 0 && len(pStep.ScheduleIDs) == 0 {
-			resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf("step %d must specify at least one target (user_ids, rotation_ids, schedule_ids) or webhook_action", i))
+		if !stepHasTargets(pStep) {
+			resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf(stepTargetsError, i))
 			return
 		}
 
-		var actions []client.DestinationInput
-		for _, uid := range pStep.UserIDs {
-			actions = append(actions, client.DestinationInput{
-				Type: "builtin-user",
-				Args: map[string]string{
-					"user_id": uid.ValueString(),
-				},
-			})
-		}
-		for _, rid := range pStep.RotationIDs {
-			actions = append(actions, client.DestinationInput{
-				Type: "builtin-rotation",
-				Args: map[string]string{
-					"rotation_id": rid.ValueString(),
-				},
-			})
-		}
-		for _, sid := range pStep.ScheduleIDs {
-			actions = append(actions, client.DestinationInput{
-				Type: "builtin-schedule",
-				Args: map[string]string{
-					"schedule_id": sid.ValueString(),
-				},
-			})
-		}
-		for _, act := range pStep.WebhookActions {
-			actions = append(actions, client.DestinationInput{
-				Type: "builtin-webhook",
-				Args: map[string]string{
-					"webhook_url": act.URL.ValueString(),
-				},
-			})
-		}
+		actions := stepActions(pStep)
 
 		stepID := ""
 		if !pStep.ID.IsNull() && !pStep.ID.IsUnknown() && pStep.ID.ValueString() != "" {

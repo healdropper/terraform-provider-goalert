@@ -14,11 +14,12 @@ resource "goalert_escalation_policy" "production" {
   repeat      = 3
 
   step {
-    delay_minutes = 5
-    multi_ack     = true
-    user_ids      = [goalert_user.sre1.id]
-    rotation_ids  = [goalert_rotation.primary.id]
-    schedule_ids  = [goalert_schedule.engineering.id]
+    delay_minutes     = 5
+    multi_ack         = true
+    user_ids          = [goalert_user.sre1.id]
+    rotation_ids      = [goalert_rotation.primary.id]
+    schedule_ids      = [goalert_schedule.engineering.id]
+    slack_channel_ids = [data.goalert_slack_channel.alerts.id]
     webhook_action {
       url = "https://events.example.com/alerts"
     }
@@ -45,6 +46,7 @@ resource "goalert_escalation_policy" "production" {
 | `step.user_ids` | List(String), Optional | List of operator user UUIDs targeted in this step. |
 | `step.rotation_ids` | List(String), Optional | List of rotation UUIDs targeted in this step. |
 | `step.schedule_ids` | List(String), Optional | List of schedule UUIDs targeted in this step. |
+| `step.slack_channel_ids` | List(String), Optional | List of Slack channel IDs (for example from `goalert_slack_channel`) posted to in this step. |
 | `step.webhook_action` | Block (List), Optional | Webhook notification target for the step. |
 | `step.webhook_action.url` | String, Required | Webhook endpoint URL. Must include scheme `http://` or `https://`. |
 
@@ -55,6 +57,7 @@ resource "goalert_escalation_policy" "production" {
 - **Step reordering and pruning**: Step order is preserved. Reordering, adding, or removing steps updates GoAlert's step sequence and step list accordingly.
 - **Drift detection**: Full refresh captures out-of-band changes to the policy, steps, and webhook actions.
 - **Referential integrity**: GoAlert prevents deleting escalation policies currently attached to services. Deletion attempts on in-use policies fail with an explanatory diagnostic message.
+- **Slack prerequisite**: GoAlert's Slack integration must be enabled (`Slack.Enable`) and its bot must be able to see the channel; GoAlert validates the channel when the step is saved.
 - **Webhook prerequisite**: GoAlert must have `Webhook.Enable` set to `true` (`GOALERT_WEBHOOK_ENABLE=true` or via system configuration) to accept webhook actions.
 
 ## Import
