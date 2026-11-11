@@ -456,3 +456,12 @@ starting with GoAlert service lifecycle rather than deployment-specific logic.
   7. Pre-`v1.1.0` API key rejection by GoAlert AST hash validation.
   8. Clean state-only teardown on `terraform destroy`.
 - Verification: `python3 scripts/acceptance.py --suite system_config`, `make PYTHON=python3 check-format test vet build`, and `git diff --check` passed.
+
+## 2026-11-11 - Configure Release Please automation and un-draft provider releases
+
+- Goal: adopt automated manifest-driven release automation via Release Please, aligning with sibling repositories.
+- Added `release-please-config.json` and `.release-please-manifest.json` pinned to `1.2.0`.
+- Added initial `CHANGELOG.md` reflecting tags v1.0.0 through v1.2.0.
+- Updated `.github/workflows/release.yml` to trigger on main branch pushes with Release Please, running verification and package/signing only on release creation.
+- Updated `.goreleaser.yml` to set `release.draft: false` so published GitHub releases remain public upon asset attachment.
+- Verification: `make PYTHON=python3 check-format test vet build` and `git diff --check` passed.

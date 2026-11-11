@@ -36,7 +36,7 @@ signs:
       - --detach-sign
       - '${artifact}'
 release:
-  draft: true
+  draft: false
   prerelease: false
   extra_files:
     - glob: terraform-registry-manifest.json
