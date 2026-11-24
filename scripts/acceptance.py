@@ -411,6 +411,26 @@ resource "goalert_service" "svc" {
         clean()
         print("PASS: goalert_escalation_policy in-place update (reordering, delay, webhook action, step addition).", flush=True)
 
+        # Remove every step, then restore them for the remaining lifecycle checks.
+        variables(name="Acceptance Policy Renamed", description="", repeat=0, steps=[])
+        plan(2)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        assert len(get_resource_values("goalert_escalation_policy.test")["step"]) == 0
+        clean()
+        f.graphql(operation="ProviderCreateEscalationPolicyStep", variables={"input": {
+            "escalationPolicyID": first["id"], "delayMinutes": 5,
+            "actions": [{"type": "builtin-webhook", "args": {"webhook_url": "http://fake-receiver.invalid/drift"}}],
+        }})
+        plan(2)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        assert len(get_resource_values("goalert_escalation_policy.test")["step"]) == 0
+        clean()
+        variables(name="Acceptance Policy Renamed", description="", repeat=0, steps=updated_steps)
+        plan(2)
+        tf("apply", "-input=false", "-auto-approve", "-no-color", "plan.bin")
+        clean()
+        print("PASS: goalert_escalation_policy removes all steps and restores them.", flush=True)
+
         # 3. State rm & import
         policy_id = first["id"]
         tf("state", "rm", "goalert_escalation_policy.test")
