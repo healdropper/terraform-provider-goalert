@@ -545,7 +545,7 @@ func (r *escalationPolicyResource) Update(ctx context.Context, req resource.Upda
 		serverSteps[s.ID] = s
 	}
 
-	var stepIDs []string
+	stepIDs := []string{}
 	for i, pStep := range plan.Steps {
 		if !stepHasTargets(pStep) {
 			resp.Diagnostics.AddError("Invalid escalation policy step", fmt.Sprintf(stepTargetsError, i))
